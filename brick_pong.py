@@ -3,8 +3,8 @@ from pygame.locals import *
 import sys
 from pygame.math import Vector2
 import math
-import numpy
-from random import randint
+from random import randint, choices
+import time
 
 pygame.init()
 WIDTH = 600
@@ -18,6 +18,7 @@ BLACK = (0, 0, 0)
 RED = (255, 0, 0)
 BLUE = (0, 0, 255)
 GREEN = (0, 255, 0)
+YELLOW = (255, 255, 0)
 
 def clamp(n: float, minVal: float, maxVal: float) -> float:
     return min(maxVal, max(minVal, n))
@@ -29,6 +30,13 @@ def drawText(text: str, pos: Vector2, fontSize: int=18, fontType: str="comicsans
     textSurface = font.render(text, antiAlias, textColor, bgColor)
     textRect = textSurface.get_rect()
     surface.blit(textSurface, [pos.x + (textRect.width/2) * centerX, pos.y + (textRect.height/2) * centerY])
+
+def addBall():
+    if len(balls) < maxBalls:
+        balls.append(Ball(initialBallPos, initialBallVel, ballSpeed, ballRadius, ballColor))
+
+    if debugMode:
+        print(len(balls))
 
 class Brick:
     def __init__(self, pos: Vector2, size: Vector2, health: int=1, color: tuple=BLACK, textureFile: str=None, isMovePad: bool=False) -> None:
@@ -54,9 +62,16 @@ class Brick:
                 pygame.draw.rect(surface, brickOutlineColor, (self.pos.x - self.width/2, self.pos.y - self.height/2, self.width, self.height), brickOutlineWidth)
 
             # Draw the brick current health
-            if not self.isMovePad and debugMode:
+            if not self.isMovePad:# and debugMode:
                 drawText(str(self.health), self.pos, bold=True, textColor=GREEN, centerX=-1, centerY=-1, surface=surface)
 
+    def onHit(self) -> None:
+        self.health -= 1
+        if not self.isMovePad and self.health >= 0 and randint(0, 1000)/1000 < powerupDropChance:
+            powerupType = choices(possiblePowerups, powerupWeights, k=1)[0]
+            powerups.append(Powerup(Vector2(self.pos.x, self.pos.y), powerupType=powerupType,
+                            color=powerupColors[powerupType], duration=randint(4, 7), fallSpeed=randint(1, 4)))
+            
 class Ball:
     def __init__(self, pos: Vector2, vel: Vector2, speed: float=3, radius: int=15, color: tuple=RED) -> None:
         self.pos = pos
@@ -112,7 +127,7 @@ class Ball:
                     overlap = 0
 
                 if overlap > 0:
-                    brick.health -= 1
+                    brick.onHit()
                     try:
                         normalized = rayToNearest.normalize()
                     except ValueError:
@@ -168,6 +183,109 @@ class Ball:
         self.pos = self.pos + self.vel * self.speed * speedMult
 
         return False
+
+    def draw(self, surface: pygame.Surface=window) -> None:
+        pygame.draw.circle(surface, self.color, (self.pos.x, self.pos.y), self.radius)
+
+class Powerup:
+    def __init__(self, pos: Vector2, radius: int=15, fallSpeed: float=1, powerupType: str="fastBall", duration: float=3, color: tuple=BLACK) -> None:
+        '''Creates a powerup.
+
+        Powerup Type can be:
+         - fastBall
+         - slowBall
+         - bigPad
+         - smallPad
+         - addBall
+        '''
+        self.pos = pos
+        self.radius = radius
+        self.fallSpeed = fallSpeed
+        self.duration = duration
+        self.__startTime = None
+        self.powerupType = powerupType
+        self.color = color
+        self.started = False
+        self.__initialState = None
+
+    def touchedMovePad(self) -> bool:
+        nearestPoint = Vector2()
+        nearestPoint.x = max(movePad.pos.x - movePad.width/2, min(self.pos.x, movePad.pos.x + movePad.width/2))
+        nearestPoint.y = max(movePad.pos.y - movePad.height/2, min(self.pos.y, movePad.pos.y + movePad.height/2))
+
+        rayToNearest = nearestPoint - self.pos
+        try:
+            overlap = self.radius - rayToNearest.magnitude()
+        except ZeroDivisionError:
+            overlap = 0
+
+        return overlap > 0
+
+    def update(self) -> bool:
+        '''
+        Updates position based on fallSpeed and returns whether it touched the ground or not
+        '''
+        self.pos += Vector2(0, self.fallSpeed)
+
+        if self.pos.y > HEIGHT - self.radius:
+            return True
+
+        return False
+
+    def isDone(self) -> bool:
+        return time.time() > self.__startTime + self.duration
+
+    def start(self) -> None:
+        if self.started:
+            return
+        self.started = True
+
+        global speedMult
+        self.__startTime = time.time()
+
+        if self.powerupType.lower() == "fastball":
+            self.__initialState = speedMult
+            speedMult = speedMult * fastBallSpeedMult
+            print(f"FastBall Start: {speedMult}")
+        elif self.powerupType.lower() == "slowball":
+            self.__initialState = speedMult
+            speedMult = speedMult / slowBallSpeedMult
+            print(f"SlowBall Start: {speedMult}")
+        elif self.powerupType.lower() == "bigpad":
+            self.__initialState = movePad.width
+            movePad.width *= bigPadSizeMult
+            print(f"BigPad Start: {movePad.width}")
+        elif self.powerupType.lower() == "smallpad":
+            self.__initialState = movePad.width
+            movePad.width /= smallPadSizeMult
+            print(f"SmallPad Start: {movePad.width}")
+        elif self.powerupType.lower() == "addball":
+            addBall()
+        else:
+            raise ValueError(f"No such powerupType \"{self.powerupType}\"")
+
+    def end(self) -> None:
+        if not self.started:
+            return
+
+        global speedMult
+
+        if self.powerupType.lower() == "fastball":
+            #speedMult = self.__initialState
+            speedMult = speedMult / fastBallSpeedMult
+            print(f"FastBall End: {speedMult}")
+        elif self.powerupType.lower() == "slowball":
+            #speedMult = self.__initialState]
+            speedMult = speedMult * slowBallSpeedMult
+            print(f"SlowBall End: {speedMult}")
+        elif self.powerupType.lower() == "bigpad":
+            #movePad.width = self.__initialState
+            movePad.width = movePad.width / bigPadSizeMult
+            print(f"BigPad End: {movePad.width}")
+        elif self.powerupType.lower() == "smallpad":
+            movePad.width = movePad.width * smallPadSizeMult
+            #movePad.width = self.__initialState
+            print(f"SmallPad End: {movePad.width}")
 
     def draw(self, surface: pygame.Surface=window) -> None:
         pygame.draw.circle(surface, self.color, (self.pos.x, self.pos.y), self.radius)
@@ -263,16 +381,34 @@ balls: list[Ball] = []
 balls.append(Ball(initialBallPos, initialBallVel, ballSpeed, ballRadius, ballColor))
 
 # Powerups
+powerupWeights = [
+    1.5,    # Slow Ball
+    1.3,    # Fast Ball
+    .6,     # Big Pad
+    .8,     # Small Pad
+    .4      # Add Ball
+]
+powerupColors = {
+    'slowBall': (50, 150, 255),     # Blue
+    'fastBall': YELLOW,
+    'bigPad': GREEN,
+    'smallPad': RED,
+    'addBall': (100, 0, 100)        # Purple
+}
+powerupDropChance = .25
+possiblePowerups = [
+    'slowBall',
+    'fastBall',
+    'bigPad',
+    'smallPad',
+    'addBall'
+]
 maxBalls = 500
-speedOnSlow = .125
-speedOnFast = 5
-padSizeOnBig = 140
-padSizeOnSmall = 45
-doubleBallsKey = K_e
-slowBallsKey = K_x
-fastBallsKey = K_z
-bigPadKey = K_f
-smallPadKey = K_g
+fastBallSpeedMult = 2
+slowBallSpeedMult = 2.5
+bigPadSizeMult = 1.8
+smallPadSizeMult = 1.7
+powerups: list[Powerup] = []
 
 while True:
     mouseX = pygame.mouse.get_pos()[0]
@@ -284,45 +420,38 @@ while True:
             pygame.quit()
             sys.exit()
         elif event.type == KEYDOWN:
-            if event.key == doubleBallsKey:
-                if len(balls) == 0:
-                    balls.append(Ball(initialBallPos, initialBallVel, ballSpeed, ballRadius, ballColor))
-                else:
-                    for ball in balls[:]:
-                        if len(balls) >= maxBalls:
-                            break
-                        balls.append(Ball(ball.pos, Vector2(ball.vel.x * (randint(-10, 10)/10) + 1, ball.vel.y * (randint(0, 25)/10) + 1), ball.speed, ball.radius, ball.color))
-                print(len(balls))
-            elif event.key in (K_a, K_LEFT):
+            if event.key in (K_a, K_LEFT):
                 xMove -= 1
             elif event.key in (K_d, K_RIGHT):
                 xMove += 1
-            elif event.key == bigPadKey:
-                if movePad.width == padSizeOnBig:
-                    movePad.width = movePadW
-                else:
-                    movePad.width = padSizeOnBig
-            elif event.key == smallPadKey:
-                if movePad.width == padSizeOnSmall:
-                    movePad.width = movePadW
-                else:
-                    movePad.width = padSizeOnSmall
         elif event.type == KEYUP:
             if event.key in (K_a, K_LEFT):
                 xMove += 1
             elif event.key in (K_d, K_RIGHT):
                 xMove -= 1
 
-    keysPressed = pygame.key.get_pressed()
-    if keysPressed[slowBallsKey] and not keysPressed[fastBallsKey]:
-        speedMult = speedOnSlow
-    elif keysPressed[fastBallsKey] and not keysPressed[slowBallsKey]:
-        speedMult = speedOnFast
-    else:
-        speedMult = 1
-
     # Clear screen
     window.fill(WHITE)
+
+    # Update powerups
+    for powerup in powerups[:]:
+        if not powerup.started:
+            if powerup.touchedMovePad():
+                # Touched movePad, so start the powerup
+                print(f"Starting powerup of type {powerup.powerupType}")
+                powerup.start()
+            else:
+                # Didn't touch, so draw the powerup
+                hitGround = powerup.update()
+                if hitGround:
+                    powerups.remove(powerup)
+
+        # Check if it's done (duration ended)
+        if powerup.started and powerup.isDone():
+            print("Ended")
+            powerup.end()
+            powerups.remove(powerup)
+
 
     # Update pad position
     if movementWithKeyboard:
@@ -353,6 +482,10 @@ while True:
     for ball in balls:
         ball.draw()
 
+    # Draw powerups
+    for powerup in powerups:
+        if not powerup.started:
+            powerup.draw()
 
     pygame.display.update()
     clock.tick(FPS)
