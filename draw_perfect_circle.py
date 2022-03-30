@@ -21,6 +21,13 @@ GREEN = (0, 255, 0)
 def map(n, start1, stop1, start2, stop2):
     return (n - start1) / (stop1 - start1) * (stop2 - start2) + start2
 
+def clamp(n, minVal, maxVal):
+    if n < minVal:
+        return minVal
+    elif n > maxVal:
+        return maxVal
+    return n
+
 CENTER = Vector2(WIDTH/2, HEIGHT/2)
 firstClickPos = None
 showHelp = True
@@ -67,15 +74,15 @@ while True:
         if not currentRadius: continue
 
         color = pygame.Color(0, 0, 0)
-        #print(f"Dist from Center: {radius:.2f}, radius diff: {abs(currentRadius - radius):.2f}")
-        color.hsla = (map(abs(currentRadius - radius), 0, max(WIDTH, HEIGHT)/2 - radius, 90, 0) % 360, 100, 50, 0)
+        print(f"Dist from Center: {radius:.2f}, radius diff: {abs(currentRadius - radius):.2f}")
+        color.hsla = (clamp(map(abs(currentRadius - radius), 0, radius/7, 90, 0), 0, 90) % 360, 100, 50, 0)
         #print(f"{color.hsla[0]:.2f}, {abs(currentRadius - radius):.2f}, {max(WIDTH, HEIGHT)/2 - radius:.2f}")
         points.append([mousePos, color])
 
     for i in range(len(points)-1):
         idx1 = points[i]
         idx2 = points[i+1]
-        pygame.draw.line(window, idx1[1], (idx1[0].x, idx1[0].y), (idx2[0].x, idx2[0].y), 5)
+        pygame.draw.line(window, idx1[1], (idx1[0].x, idx1[0].y), (idx2[0].x, idx2[0].y), 7)
 
     # Draw the middle point
     pygame.draw.circle(window, BLACK, (CENTER.x, CENTER.y), 15)
