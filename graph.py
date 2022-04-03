@@ -74,7 +74,7 @@ drawLines = True
 screenEndX = 10
 screenStartY = -10
 screenEndY = 10'''
-steps = 100
+steps = 75
 
 while True:
     mouseX = pygame.mouse.get_pos()[0]
