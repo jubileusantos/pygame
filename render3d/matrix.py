@@ -2,16 +2,21 @@ from __future__ import annotations
 from pygame.math import Vector2, Vector3
 
 class Matrix:
-    def __init__(self, matrix):
-        self.matrix = matrix
+    def __init__(self, matrix: list[list[float]]=None, cols: int=None, rows: int=None):
+        if matrix:
+            self.matrix: list[list[float]] = matrix
+        else:
+            self.matrix: list[list[float]] = []
+            for _ in range(rows):
+                self.matrix.append([0 for _ in range(cols)])
 
-    def getIndex(self, x, y):
+    def getIndex(self, x, y) -> float:
         return self.matrix[y][x]
 
-    def getDimensions(self):
+    def getDimensions(self) -> tuple[int, int]:
         return len(self.matrix), len(self.matrix[0])
 
-    def getInverse(self):
+    def getInverse(self) -> Matrix:
         if self.getDimensions() == (2,2):
             determinant = 1 / (self.getIndex(0, 0) * self.getIndex(1,1) - self.getIndex(0, 1) * self.getIndex(1, 0))
             return Matrix([
@@ -21,7 +26,7 @@ class Matrix:
         else:
             return NotImplementedError(f"Calculation for inverse matrices of dimensions {self.getDimensions()[0]}x{self.getDimensions()[1]} not implemented")
 
-    def __add__(self, other):
+    def __add__(self, other) -> Matrix:
         if isinstance(other, Matrix):
             if self.getDimensions() != other.getDimensions(): raise TypeError(f"Cannot add two Matrices of different dimensions: {self.getDimensions()[0]}x{self.getDimensions()[1]} and {other.getDimensions()[0]}x{other.getDimensions()[1]}") 
 
@@ -35,7 +40,7 @@ class Matrix:
                 newMatrix.append(line)
         return Matrix(newMatrix)
 
-    def __mul__(self, other):
+    def __mul__(self, other) -> Matrix:
         if isinstance(other, Matrix):
             newMatrix = []
 
@@ -99,18 +104,13 @@ class Matrix:
 
     @staticmethod
     def fromVector2(v: Vector2) -> Matrix:
-        if type(v) != Vector2:
-            raise TypeError("Argument v needs to be a Vector2")
-
         return Matrix([
         [v.x],
         [v.y]
     ])
 
+    @staticmethod
     def fromVector3(v: Vector3) -> Matrix:
-        if type(v) != Vector3:
-            raise TypeError("Argument v needs to be a Vector3")
-
         return Matrix([
         [v.x],
         [v.y],
@@ -118,12 +118,10 @@ class Matrix:
     ])
 
 if __name__ == "__main__":
-    projection = Matrix([
-        [1, 0, 0],
-        [0, 1, 0],
-        [0, 0, 1]
-    ])
+    projection = Matrix(cols=10, rows=10)
+    print(projection)
 
     point = Vector3(15, 0, 0)
 
-    print(Matrix.fromVector2(point))
+    print()
+    print(Matrix.fromVector3(point))
