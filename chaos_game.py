@@ -172,18 +172,5 @@ while True:
     for point in points:
         pygame.draw.circle(window, BLACK, point, pointSize)
 
-
-    '''frame = Instance.new("Frame")
-    frame.Position = UDim2.fromOffset(newPoint.X, newPoint.Y)
-    frame.AnchorPoint = Vector2(.5, .5)
-    frame.Size = UDim2.fromOffset(pointSize, pointSize)
-    frame.BackgroundColor3 = Color3.new(0, 0, 0)
-    frame.BorderSizePixel = 0
-    frame.Parent = background
-    # Put a UICorner inside the dot to make it better visually
-    uiCorner = Instance.new("UICorner")
-    uiCorner.CornerRadius = UDim.new(1, 0)
-    uiCorner.Parent = frame'''
-
     pygame.display.update()
     clock.tick(FPS)
