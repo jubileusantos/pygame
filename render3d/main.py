@@ -109,6 +109,10 @@ class Square:
         # Save the projected points
         projectedPoints: list[Vector2] = []
 
+        self.rotateX(randint(0, 10)/10)
+        self.rotateY(randint(0, 10)/10)
+        self.rotateZ(randint(0, 10)/10)
+
         # Calculate all vertex positions
         for point in self.points:
             # Rotate
@@ -175,8 +179,8 @@ class Square:
             pygame.draw.line(surface, self.color, projectedPoints[i], projectedPoints[i + 4], self.edgeThickness)
 
 # Constants
-faceDrawStep = 5
-faceDrawSize = 4
+faceDrawStep = 4
+faceDrawSize = 3
 
 # Modes
 orthographicProjection = False         # If false, Perspective Projeciton will be used
@@ -196,7 +200,7 @@ zoomStep = .1
 
 # Objects
 objects: list[Square] = []
-for i in range(1):
+for i in range(8):
     faceColors = {
         "left": RED,
         "right": GREEN,

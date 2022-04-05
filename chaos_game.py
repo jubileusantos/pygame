@@ -20,6 +20,12 @@ GREEN = (0, 255, 0)
 YELLOW = (255, 255, 0)
 ORANGE = (255, 127, 0)
 
+class Point:
+    def __init__(self, angle: float=0, r: float=1, center: Vector2=None) -> None:
+        self.angle = angle
+        self.r = r
+        self.center = center
+
 def map(n, start1, stop1, start2, stop2):
     return (n - start1) / (stop1 - start1) * (stop2 - start2) + start2
 
@@ -44,15 +50,6 @@ def pointInPolygon(point: Vector2, vertices: list[Vector2]) -> bool:
 # Function to draw a perfect shape with n sides, based on the given radius and center
 def getVerticesForShape(sides: int=3, radius: float=50, center: Vector2=None, thickness: int=1) -> list[Vector2]:
     center = center or Vector2(WIDTH/2, HEIGHT/2)
-
-    '''step = 360 / sides
-    start
-    if sides % 2 == 0:
-        start = -step/2
-    else:
-        start = 0
-
-    loopEnd = start + 360'''
     
     # Start with the first point
     startingAngle = -90
@@ -105,8 +102,6 @@ def testShapeArea(vertices: list[Vector2], step: int=6, surface: pygame.Surface=
         for y in range(upmost-10, downmost+10, step):
             pos = Vector2(x, y)
             pygame.draw.circle(surface, GREEN if pointInPolygon(pos, vertices) else RED, pos, 3)
-    
-
 
 # Function to draw a polygon with the given vertices
 def drawPolygon(vertices: list[Vector2], color: tuple=BLACK, surface: pygame.Surface=window, lineWidth: int=2):
@@ -114,22 +109,85 @@ def drawPolygon(vertices: list[Vector2], color: tuple=BLACK, surface: pygame.Sur
         vertex0, vertex1 = vertices[i], vertices[i+1]
         pygame.draw.line(surface, color, vertex0, vertex1, lineWidth)
 
+def getVerticesForPolygon(center: Vector2, points: list[Point|float]):
+    # Start with the first point
+    startingAngle = -90
+    if sides % 2 == 0:
+        print("Going more left")
+        startingAngle -= 360 / (2 * sides)
+
+    # Keep track of all the vertices
+    vertices = []
+
+    x = center.x + cos(radians((points[0].angle if type(points[0]) == Point else points[0]) - 90)) * (points[0].r if type(points[0]) == Point else radius)
+    y = center.x + sin(radians((points[0].angle if type(points[0]) == Point else points[0]) - 90)) * (points[0].r if type(points[0]) == Point else radius)
+    lastPoint = Vector2(x, y)
+    firstPoint = lastPoint
+
+    for point in points:
+        # Get a new point
+        if type(point) == Point:
+            x = (point.center or center).x + cos(radians(point.angle - 90)) * point.r
+            y = (point.center or center).x + sin(radians(point.angle - 90)) * point.r
+        else:
+            x = center.x + cos(radians(point - 90)) * radius
+            y = center.y + sin(radians(point - 90)) * radius
+
+        # Set the last point to be the new point and add it to the vertices list
+        lastPoint = Vector2(x, y)
+        vertices.append(lastPoint)
+    
+    # The polygon needs to end where it began
+    vertices.append(firstPoint)
+
+    # Return the vertices list
+    return vertices
+
 # Constants
 center = Vector2(WIDTH/2, HEIGHT/2)
 
 # Variables
 radius = 250
-sides = 3
-alwaysNewVertex = False
+sides = 8
+alwaysNewVertex = 1
+needsToBeInsideShape = True
 pointSize = 1
-calcsPerFrame = 1
+calcsPerFrame = 10000
 
 points: list[Vector2] = []
 lastVertex = None
 
 # Draw the shape
-vertices = getVerticesForShape(sides, radius, center, 2)
-print(vertices)
+starPoints = [
+    Point(0, radius),
+    Point(2/5*360, radius),
+    Point(4/5*360, radius),
+    Point(1/5*360, radius),
+    Point(3/5*360, radius),
+    Point(0, radius),
+]
+angle = 15
+size = 4
+plusPoints = [
+    Point(angle, radius),
+    Point(45, angle*size),
+    Point(90 - angle, radius),
+    Point(90 + angle, radius),
+    Point(135, angle*size),
+    Point(180 - angle, radius),
+    Point(180 + angle, radius),
+    Point(225, angle*size),
+    Point(270 - angle, radius),
+    Point(270 + angle, radius),
+    Point(315, angle*size),
+    Point(-angle, radius),
+    Point(angle, radius),
+]
+
+chosenShape = plusPoints
+vertices = getVerticesForPolygon(Vector2(WIDTH/2, HEIGHT/2), chosenShape)
+#vertices = getVerticesForPolygon(Vector2(WIDTH/2, HEIGHT/2), [0, 140, 220, 0])
+#vertices = getVerticesForShape(sides, radius, center, 2)
 
 # Set the initial point
 lastPoint = center + Vector2(randint(-radius, radius), randint(-radius, radius))
@@ -145,6 +203,8 @@ while True:
         if event.type == QUIT or (event.type == KEYDOWN and event.key == K_ESCAPE):
             pygame.quit()
             sys.exit()
+        if event.type == KEYDOWN and event.key == K_e:
+            print("oi")
 
     window.fill(WHITE)
 
@@ -159,10 +219,15 @@ while True:
         
         # Create a new point in the middle of the last point and the chosen vertex
         newPoint = lastPoint.lerp(newVertex, .5)
-        points.append(newPoint)
-
         # Make the last point be the new point
         lastPoint = newPoint
+
+        # Add the new point to the points list
+        if needsToBeInsideShape and not pointInPolygon(newPoint, vertices):
+            continue
+
+        points.append(newPoint)
+
     
     # Draw the polygon's vertices
     for i in range(len(vertices)-1):

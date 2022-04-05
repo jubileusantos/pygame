@@ -424,6 +424,9 @@ while True:
                 xMove -= 1
             elif event.key in (K_d, K_RIGHT):
                 xMove += 1
+            elif event.key == K_e:
+                for i in range(15):
+                    addBall()
         elif event.type == KEYUP:
             if event.key in (K_a, K_LEFT):
                 xMove += 1
