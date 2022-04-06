@@ -150,7 +150,7 @@ center = Vector2(WIDTH/2, HEIGHT/2)
 radius = 250
 sides = 8
 alwaysNewVertex = 1
-needsToBeInsideShape = True
+needsToBeInsideShape = 1
 pointSize = 1
 calcsPerFrame = 10000
 
@@ -164,10 +164,9 @@ starPoints = [
     Point(4/5*360, radius),
     Point(1/5*360, radius),
     Point(3/5*360, radius),
-    Point(0, radius),
 ]
 angle = 15
-size = 4
+size = 6
 plusPoints = [
     Point(angle, radius),
     Point(45, angle*size),
@@ -181,10 +180,16 @@ plusPoints = [
     Point(270 + angle, radius),
     Point(315, angle*size),
     Point(-angle, radius),
-    Point(angle, radius),
+]
+diamondPoints = [
+    40,
+    80,
+    180,
+    -80,
+    -40
 ]
 
-chosenShape = plusPoints
+chosenShape = starPoints
 vertices = getVerticesForPolygon(Vector2(WIDTH/2, HEIGHT/2), chosenShape)
 #vertices = getVerticesForPolygon(Vector2(WIDTH/2, HEIGHT/2), [0, 140, 220, 0])
 #vertices = getVerticesForShape(sides, radius, center, 2)
