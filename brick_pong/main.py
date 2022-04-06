@@ -1,6 +1,7 @@
 import pygame
 from pygame.locals import *
 import sys
+import os.path
 from pygame.math import Vector2
 import math
 from random import randint, choices
@@ -20,6 +21,9 @@ BLUE = (0, 0, 255)
 GREEN = (0, 255, 0)
 YELLOW = (255, 255, 0)
 
+def map(n, start1, stop1, start2, stop2):
+    return (n - start1) / (stop1 - start1) * (stop2 - start2) + start2
+
 def clamp(n: float, minVal: float, maxVal: float) -> float:
     return min(maxVal, max(minVal, n))
 
@@ -33,7 +37,7 @@ def drawText(text: str, pos: Vector2, fontSize: int=18, fontType: str="comicsans
 
 def addBall():
     if len(balls) < maxBalls:
-        balls.append(Ball(initialBallPos, initialBallVel, ballSpeed, ballRadius, ballColor))
+        balls.append(Ball(initialBallPos, Vector2(randint(-2, 2), -1), ballSpeed, ballRadius, ballColor))
 
     if debugMode:
         print(len(balls))
@@ -51,8 +55,25 @@ class Brick:
 
     def draw(self, surface: pygame.Surface=window, drawOutline: bool=True) -> None:
         if self.textureFile:
-            # Load texture
-            pass
+            # Load sprite and draw it on the window
+            brickSprite = pygame.image.load(os.path.join(__file__, f"../{self.textureFile}"))
+            brickSprite = pygame.transform.scale(brickSprite, (self.width, self.height))
+
+            # Draw damage on top of brick
+            healthRatio = self.health / self.maxHealth
+            percentPerDamageLevel = 1 / (len(damageSprites) + 1)
+            if healthRatio <= 1 - percentPerDamageLevel:
+                idx = map(self.health, 0, self.maxHealth, 0, len(damageSprites))
+                damageSprite = pygame.image.load(os.path.join(__file__, f"../{damageSprites[math.floor(idx)]}"))
+                damageSprite = pygame.transform.scale(damageSprite, (self.width, self.height))
+                brickSprite.blit(damageSprite, (0, 0))
+
+            if debugMode:
+                drawText(str(self.health), Vector2(brickSprite.get_width()/2, brickSprite.get_height()/2), bold=True, textColor=GREEN, centerX=-1, centerY=-1, surface=brickSprite)
+            
+            # Draw sprite on screen
+            surface.blit(brickSprite, (self.pos.x - self.width/2, self.pos.y - self.height/2))
+
         else:
             # Draw the rect
             pygame.draw.rect(surface, self.color, (self.pos.x - self.width/2, self.pos.y - self.height/2, self.width, self.height))
@@ -290,11 +311,27 @@ class Powerup:
     def draw(self, surface: pygame.Surface=window) -> None:
         pygame.draw.circle(surface, self.color, (self.pos.x, self.pos.y), self.radius)
 
+# Texture paths
+brickSprites = [
+    "black.png",
+    "blue.png",
+    "green.png",
+    "orange.png",
+    "purple.png",
+    "red.png",
+    "yellow.png"
+]
+damageSprites = [
+    "damaged3.png",
+    "damaged2.png",
+    "damaged1.png",
+]
+
 # States
 debugMode = False
-movementWithKeyboard = True
+movementWithKeyboard = False
 generateFullLevel = False
-generateRandomLevel = True
+generateRandomLevel = False
 brickChance = .4
 
 # Move Pad
@@ -368,11 +405,12 @@ for i in range(brickCols):
         if (not generateRandomLevel and (char == brickChar or generateFullLevel)) or (generateRandomLevel and randint(0, 1000)/1000 < brickChance):
             x = WIDTH/brickCols * i
             y = maxBrickYpos/brickRows * j
-            bricks.append(Brick(Vector2(x + brickW/2, y + brickH/2), Vector2(brickW, brickH), health=randint(1, 4)))
+            sprite = brickSprites[randint(0, len(brickSprites)-1)]
+            bricks.append(Brick(Vector2(x + brickW/2, y + brickH/2), Vector2(brickW, brickH), textureFile=sprite, health=randint(1, 4)))
 
 # Balls configuration
 ballSpeed = 3
-speedMult = 1
+speedMult = 1.5
 ballRadius = 10
 ballColor = RED
 initialBallPos = Vector2(WIDTH/2, HEIGHT - movePadGroundDistance - 50)
@@ -410,6 +448,7 @@ bigPadSizeMult = 1.8
 smallPadSizeMult = 1.7
 powerups: list[Powerup] = []
 
+dt = 1000/FPS
 while True:
     mouseX = pygame.mouse.get_pos()[0]
     mouseY = pygame.mouse.get_pos()[1]
@@ -425,8 +464,9 @@ while True:
             elif event.key in (K_d, K_RIGHT):
                 xMove += 1
             elif event.key == K_e:
-                for i in range(15):
-                    addBall()
+                addBall()
+            elif event.key == K_s:
+                print(speedMult)
         elif event.type == KEYUP:
             if event.key in (K_a, K_LEFT):
                 xMove += 1
@@ -490,22 +530,19 @@ while True:
         if not powerup.started:
             powerup.draw()
 
+    try:
+        fps = 1000/dt
+    except ZeroDivisionError:
+        fps = 1000
+    drawText(f"FPS: {fps:.0f}", Vector2(), fontSize=25, textColor=RED)
+
     pygame.display.update()
-    clock.tick(FPS)
+    dt = clock.tick(FPS)
 
 ''''
 TODO:
- - Criar uma classe Powerup que tem as propriedades radius, fallSpeed, color (ou textureFileName) e um método activate()
-        - O powerup.pos.y aumenta em fallSpeed a cada frame
-        - O método activate() é chamado quando o powerup encosta (colide) com o movePad
-                - Aqui que rola a putaria.
-                - Da pra meter uma propriedade duration tbm, que reverte oq foi feito depois de um tempo
-                        - Teria q meter um coroutine.wrap() mas n faço ideia de como fazer lmao
-                        - Ou fazer um método done() q verifica a cada frame no while True e se retornar true,
-                          tira da lista e chama o método stop()/revert()
+ - Na criação de mapas para o jogo, botar umas letras q sinalizam cor/vida
  - Sistema de jogo:
         - Se não houver nenhuma bola, perdeu o jogo
         - Se não houver nenhum tijolo, ganhou o jogo
- - Mudar a cor/textura dos tijolos de acordo com a vida/maxVida deles
-
 '''
