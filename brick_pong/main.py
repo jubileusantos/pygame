@@ -331,8 +331,8 @@ damageSprites = [
 debugMode = False
 movementWithKeyboard = False
 generateFullLevel = False
-generateRandomLevel = False
-brickChance = .4
+generateRandomLevel = True
+brickChance = .03
 
 # Move Pad
 movePadGroundDistance = 50
@@ -402,7 +402,7 @@ for i in range(brickCols):
         # If out of bounds, just don't do anything
         except IndexError:
             char = brickChar*2
-        if (not generateRandomLevel and (char == brickChar or generateFullLevel)) or (generateRandomLevel and randint(0, 1000)/1000 < brickChance):
+        if (not generateRandomLevel and char == brickChar) or (generateRandomLevel and randint(0, 1000)/1000 < brickChance) or generateFullLevel:
             x = WIDTH/brickCols * i
             y = maxBrickYpos/brickRows * j
             sprite = brickSprites[randint(0, len(brickSprites)-1)]
@@ -541,6 +541,7 @@ while True:
 
 ''''
 TODO:
+ - Implementar iterações de cálculo de física por frame nas bolas para evitar erros (entrar dentro do movePad)
  - Na criação de mapas para o jogo, botar umas letras q sinalizam cor/vida
  - Sistema de jogo:
         - Se não houver nenhuma bola, perdeu o jogo
