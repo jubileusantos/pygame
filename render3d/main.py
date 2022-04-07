@@ -198,6 +198,7 @@ class Sphere(BaseObject):
         super().__init__(pos, color, edgeThickness, cornerThickness, faceColors)
         self.size = radius
         self.radius = radius
+        self.resolution = resolution
 
         # Calculate points
         for i in range(resolution):
@@ -214,9 +215,21 @@ class Sphere(BaseObject):
         # Get points
         projectedPoints = self.getPoints()
 
-        for i in range(len(projectedPoints)-1):
+        for i in range(self.resolution-1):
+            for j in range(self.resolution-1):
+                idx = j + i * self.resolution
+                idx1 = j + (i+1) * self.resolution
+                # Vertical
+                pygame.draw.line(surface, self.color, projectedPoints[idx], projectedPoints[idx+1], self.edgeThickness)
+                # Horizontal
+                pygame.draw.line(surface, self.color, projectedPoints[idx], projectedPoints[idx1], self.edgeThickness)
+                
+        '''for i in range(len(projectedPoints)-1):
+            point1 = projectedPoints[i]
+            point2 = projectedPoints[i+1]
             #print(f"Line from ({projectedPoints[i].x, projectedPoints[i].y}) to ({projectedPoints[i+1].x, projectedPoints[i+1].y})")
-            pygame.draw.line(surface, self.color, projectedPoints[i], projectedPoints[i+1], self.edgeThickness)
+            r = 0
+            pygame.draw.line(surface, self.color, (point1.x + randint(-r, r), point1.y + randint(-r, r)), (point2.x + randint(-r, r), point2.y + randint(-r, r)), self.edgeThickness)'''
 
 # Constants
 faceDrawStep = 4
@@ -250,7 +263,7 @@ for i in range(1):
         "bottom": ORANGE
     }
     #objects.append(Square(pos=Vector3(randint(100, WIDTH-100), randint(100, HEIGHT-100), randint(1, 5)), size=150, edgeThickness=2, faceColors=faceColors))
-    objects.append(Sphere(pos=Vector3(3, 3, 1), radius=150, resolution=50, edgeThickness=2, faceColors=faceColors))
+    objects.append(Sphere(pos=Vector3(3, 3, 1), radius=150, resolution=10, edgeThickness=1, faceColors=faceColors))
 
 # States
 leftButtonDown = False
@@ -328,3 +341,9 @@ while True:
 
     pygame.display.update()
     dt = clock.tick(FPS)
+
+'''
+TODO:
+ - A esfera rotaciona ao redor de um outro ponto, e não em volta de si mesmo. nao faço ideia do q fazer todavia
+
+'''
