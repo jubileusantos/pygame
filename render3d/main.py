@@ -5,7 +5,7 @@ from pygame.math import Vector2, Vector3
 from matrix import Matrix
 import faceVertices
 from random import randint
-from math import cos, sin, radians, inf
+from math import cos, pi, sin, radians, inf
 
 pygame.init()
 WIDTH = 800
@@ -21,6 +21,9 @@ BLUE = (0, 0, 255)
 GREEN = (0, 255, 0)
 YELLOW = (255, 255, 0)
 ORANGE = (255, 127, 0)
+
+def map(n, start1, stop1, start2, stop2):
+    return (n - start1) / (stop1 - start1) * (stop2 - start2) + start2
 
 def clamp(n, minVal, maxVal):
     if n < minVal:
@@ -55,29 +58,17 @@ def drawText(text: str, pos: Vector2, fontSize: int=18, fontType: str="comicsans
     textRect = textSurface.get_rect()
     surface.blit(textSurface, [pos.x + (textRect.width/2) * centerX, pos.y + (textRect.height/2) * centerY])
 
-class Square:
-    def __init__(self, center: Vector3=None, size: Vector3=None, color: tuple=BLACK, edgeThickness: int=1,
+class BaseObject:
+    def __init__(self, pos: Vector3, color: tuple=BLACK, edgeThickness: int=1,
                  cornerThickness: int=1, faceColors: dict[str, list[int]]=None) -> None:
-        self.center: Vector3 = center or Vector3(WIDTH/2, HEIGHT/2, 0)
+        self.pos = pos
         self.color = color
-        self.size = size or Vector3(1, 1, 1)
-        self.faceColors = faceColors
         self.edgeThickness = edgeThickness
         self.cornerThickness = cornerThickness
         self.rotation = Vector3(0, 0, 0)
-        self.points: list[Vector3] = [
-            # Back
-            Vector3(-1, -1, -1),
-            Vector3(1, -1, -1),
-            Vector3(1, 1, -1),
-            Vector3(-1, 1, -1),
-
-            # Front
-            Vector3(-1, -1, 1),
-            Vector3(1, -1, 1),
-            Vector3(1, 1, 1),
-            Vector3(-1, 1, 1),
-        ]
+        self.faceColors = faceColors
+        self.size = 1
+        self.points: list[Vector3] = []
 
     def rotateX(self, angle) -> None:
         self.rotation.x += radians(angle)
@@ -88,7 +79,7 @@ class Square:
     def rotateZ(self, angle) -> None:
         self.rotation.z += radians(angle)
 
-    def draw(self, surface: pygame.Surface=window, paintFaces: bool=False) -> None:
+    def getPoints(self) -> list[Vector2]:
         # Create rotation matrices
         rotationX: Matrix = Matrix([
             [1, 0, 0],
@@ -109,10 +100,6 @@ class Square:
         # Save the projected points
         projectedPoints: list[Vector2] = []
 
-        self.rotateX(randint(0, 10)/10)
-        self.rotateY(randint(0, 10)/10)
-        self.rotateZ(randint(0, 10)/10)
-
         # Calculate all vertex positions
         for point in self.points:
             # Rotate
@@ -131,11 +118,38 @@ class Square:
                 [0, z, 0],
                 [0, 0, z]
             ])
-
             # Add offset and scale
             projected = Matrix.toVector2(projection * rotated)
-            pos = Vector2(self.center.x + GLOBAL_POSITION.x + projected.x * self.size, self.center.y + GLOBAL_POSITION.y + projected.y * self.size)
+            pos = Vector2(self.pos.x + GLOBAL_POSITION.x + projected.x * self.size, self.pos.y + GLOBAL_POSITION.y + projected.y * self.size)
             projectedPoints.append(pos)
+        
+        return projectedPoints
+
+    def draw(self, surface: pygame.Surface=window, paintFaces: bool=False) -> None:
+        pass
+
+class Square(BaseObject):
+    def __init__(self, pos: Vector3=None, size: float=50, color: tuple=BLACK, edgeThickness: int=1,
+                 cornerThickness: int=1, faceColors: dict[str, list[int]]=None) -> None:
+        super().__init__(pos, color, edgeThickness, cornerThickness, faceColors)
+        self.size = size
+        self.points: list[Vector3] = [
+            # Back
+            Vector3(-1, -1, -1),
+            Vector3(1, -1, -1),
+            Vector3(1, 1, -1),
+            Vector3(-1, 1, -1),
+
+            # Front
+            Vector3(-1, -1, 1),
+            Vector3(1, -1, 1),
+            Vector3(1, 1, 1),
+            Vector3(-1, 1, 1),
+        ]
+
+    def draw(self, surface: pygame.Surface=window, paintFaces: bool=False) -> None:
+        # Get points
+        projectedPoints: list[Vector2] = self.getPoints()
 
         # Paint faces
         if paintFaces:
@@ -178,13 +192,39 @@ class Square:
             pygame.draw.line(surface, self.color, projectedPoints[i+4], projectedPoints[(i + 1) % 4 + 4], self.edgeThickness)
             pygame.draw.line(surface, self.color, projectedPoints[i], projectedPoints[i + 4], self.edgeThickness)
 
+class Sphere(BaseObject):
+    def __init__(self, pos: Vector3=None, radius: float=50, resolution: int=15, color: tuple=BLACK, edgeThickness: int=1,
+                 cornerThickness: int=1, faceColors: dict[str, list[int]]=None) -> None:
+        super().__init__(pos, color, edgeThickness, cornerThickness, faceColors)
+        self.size = radius
+        self.radius = radius
+
+        # Calculate points
+        for i in range(resolution):
+            lat = map(i, 0, resolution-1, 0, 2*pi)
+            for j in range(resolution):
+                lon = map(j, 0, resolution-1, 0, pi)
+
+                x = self.pos.x + sin(lon) * cos(lat)
+                y = self.pos.y + sin(lon) * sin(lat)
+                z = self.pos.z + cos(lon)
+                self.points.append(Vector3(x, y, z))
+
+    def draw(self, surface: pygame.Surface=window, paintFaces: bool=False) -> None:
+        # Get points
+        projectedPoints = self.getPoints()
+
+        for i in range(len(projectedPoints)-1):
+            #print(f"Line from ({projectedPoints[i].x, projectedPoints[i].y}) to ({projectedPoints[i+1].x, projectedPoints[i+1].y})")
+            pygame.draw.line(surface, self.color, projectedPoints[i], projectedPoints[i+1], self.edgeThickness)
+
 # Constants
 faceDrawStep = 4
 faceDrawSize = 3
 
 # Modes
-orthographicProjection = False         # If false, Perspective Projeciton will be used
-autoResetGlobalPosition = True
+orthographicProjection = True         # If false, Perspective Projeciton will be used
+autoResetGlobalPosition = False
 autoResetGlobalRotation = True
 
 # Movement
@@ -199,8 +239,8 @@ rotationAddCapLerp = .001
 zoomStep = .1
 
 # Objects
-objects: list[Square] = []
-for i in range(8):
+objects: list[BaseObject] = []
+for i in range(1):
     faceColors = {
         "left": RED,
         "right": GREEN,
@@ -209,7 +249,8 @@ for i in range(8):
         "top": BLACK,
         "bottom": ORANGE
     }
-    objects.append(Square(center=Vector3(randint(100, WIDTH-100), randint(100, HEIGHT-100), randint(1, 5)), size=150, edgeThickness=2, faceColors=faceColors))
+    #objects.append(Square(pos=Vector3(randint(100, WIDTH-100), randint(100, HEIGHT-100), randint(1, 5)), size=150, edgeThickness=2, faceColors=faceColors))
+    objects.append(Sphere(pos=Vector3(3, 3, 1), radius=150, resolution=50, edgeThickness=2, faceColors=faceColors))
 
 # States
 leftButtonDown = False
