@@ -125,7 +125,7 @@ class BaseObject:
         
         return projectedPoints
 
-    def draw(self, surface: pygame.Surface=window, paintFaces: bool=False) -> None:
+    def draw(self, surface: pygame.Surface=window, drawEdges: bool=True, paintFaces: bool=False) -> None:
         pass
 
 class Square(BaseObject):
@@ -136,7 +136,7 @@ class Square(BaseObject):
         self.points: list[Vector3] = [
             # Back
             Vector3(-1, -1, -1),
-            Vector3(1, -1, -1),
+            Vector3(.1, -1, -1),
             Vector3(1, 1, -1),
             Vector3(-1, 1, -1),
 
@@ -147,13 +147,12 @@ class Square(BaseObject):
             Vector3(-1, 1, 1),
         ]
 
-    def draw(self, surface: pygame.Surface=window, paintFaces: bool=False) -> None:
+    def draw(self, surface: pygame.Surface=window, drawEdges: bool=True, paintFaces: bool=False) -> None:
         # Get points
         projectedPoints: list[Vector2] = self.getPoints()
 
         # Paint faces
         if paintFaces:
-            pointsToPaint: list[tuple[Vector2, tuple]] = []
             for face, indexes in faceVertices.square.items():
                 if len(indexes) == 0: continue
                 color = self.faceColors.setdefault(face, BLACK)
@@ -162,35 +161,14 @@ class Square(BaseObject):
                 for index in indexes:
                     faceList.append(projectedPoints[index])
 
-                minX, maxX, minY, maxY = -faceDrawStep*2, WIDTH+faceDrawStep*2, faceDrawStep*2, HEIGHT+faceDrawStep*2
-                for point in faceList[:-1]:
-                    if point.x < minX:
-                        minX = point.x
-                    if point.x > maxX:
-                        maxX = point.x
+                pygame.draw.polygon(surface, color, faceList)
 
-                    if point.y < minY:
-                        minY = point.y
-                    if point.y > maxY:
-                        maxY = point.y
-
-                for x in range(round(minX), round(maxX), faceDrawStep):
-                    for y in range(round(minY), round(maxY), faceDrawStep):
-                        pos = Vector2(x, y)
-                        if pointInPolygon(pos, faceList):
-                            pointsToPaint.append((pos, color))
-                            #pygame.draw.circle(surface, color, pos, faceDrawSize)
-                            pass
-                
-            # Draw all face points
-            for point in pointsToPaint:
-                pygame.draw.circle(surface, point[1], point[0], faceDrawSize)
-
-        # Draw edges
-        for i in range(4):
-            pygame.draw.line(surface, self.color, projectedPoints[i], projectedPoints[(i + 1) % 4], self.edgeThickness)
-            pygame.draw.line(surface, self.color, projectedPoints[i+4], projectedPoints[(i + 1) % 4 + 4], self.edgeThickness)
-            pygame.draw.line(surface, self.color, projectedPoints[i], projectedPoints[i + 4], self.edgeThickness)
+        if drawEdges:
+            # Draw edges
+            for i in range(0):
+                pygame.draw.line(surface, self.color, projectedPoints[i], projectedPoints[(i + 1) % 4], self.edgeThickness)
+                pygame.draw.line(surface, self.color, projectedPoints[i+4], projectedPoints[(i + 1) % 4 + 4], self.edgeThickness)
+                pygame.draw.line(surface, self.color, projectedPoints[i], projectedPoints[i + 4], self.edgeThickness)
 
 class Sphere(BaseObject):
     def __init__(self, pos: Vector3=None, radius: float=50, resolution: int=15, color: tuple=BLACK, edgeThickness: int=1,
@@ -211,34 +189,39 @@ class Sphere(BaseObject):
                 z = self.pos.z + cos(lon)
                 self.points.append(Vector3(x, y, z))
 
-    def draw(self, surface: pygame.Surface=window, paintFaces: bool=False) -> None:
+    def draw(self, surface: pygame.Surface=window, drawEdges: bool=True, paintFaces: bool=False) -> None:
         # Get points
         projectedPoints = self.getPoints()
 
-        for i in range(self.resolution-1):
-            for j in range(self.resolution-1):
-                idx = j + i * self.resolution
-                idx1 = j + (i+1) * self.resolution
-                # Vertical
-                pygame.draw.line(surface, self.color, projectedPoints[idx], projectedPoints[idx+1], self.edgeThickness)
-                # Horizontal
-                pygame.draw.line(surface, self.color, projectedPoints[idx], projectedPoints[idx1], self.edgeThickness)
-                
-        '''for i in range(len(projectedPoints)-1):
-            point1 = projectedPoints[i]
-            point2 = projectedPoints[i+1]
-            #print(f"Line from ({projectedPoints[i].x, projectedPoints[i].y}) to ({projectedPoints[i+1].x, projectedPoints[i+1].y})")
-            r = 0
-            pygame.draw.line(surface, self.color, (point1.x + randint(-r, r), point1.y + randint(-r, r)), (point2.x + randint(-r, r), point2.y + randint(-r, r)), self.edgeThickness)'''
+        if paintFaces:
+            # Paint faces
+            for i in range(self.resolution):
+                horizontalPoints: list[Vector2] = []
+                for j in range(self.resolution):
+                    horizontalPoints.append(projectedPoints[i + (j) * self.resolution])
+                    
+                # Horizontal Lines
+                pygame.draw.polygon(surface, self.color, horizontalPoints)
 
-# Constants
-faceDrawStep = 4
-faceDrawSize = 3
+                # Vertical Lines
+                startIdx = i * self.resolution
+                endIdx = i * self.resolution + self.resolution
+                pygame.draw.polygon(surface, self.color, projectedPoints[startIdx:endIdx])
+
+        if drawEdges:
+            for i in range(self.resolution-1):
+                for j in range(self.resolution-1):
+                    idx = i + j * self.resolution
+                    idx1 = i + (j+1) * self.resolution
+                    # Horizontal
+                    pygame.draw.line(surface, BLACK, projectedPoints[idx], projectedPoints[idx1], self.edgeThickness)
+                    # Vertical
+                    pygame.draw.line(surface, BLACK, projectedPoints[idx], projectedPoints[idx+1], self.edgeThickness)
 
 # Modes
-orthographicProjection = True         # If false, Perspective Projeciton will be used
+orthographicProjection = True         # If false, Perspective Projection will be used
 autoResetGlobalPosition = False
-autoResetGlobalRotation = True
+autoResetGlobalRotation = False
 
 # Movement
 GLOBAL_POSITION = Vector3(0, 0, 5)
@@ -255,15 +238,15 @@ zoomStep = .1
 objects: list[BaseObject] = []
 for i in range(1):
     faceColors = {
-        "left": RED,
         "right": GREEN,
         "front": YELLOW,
         "back": BLUE,
         "top": BLACK,
-        "bottom": ORANGE
+        "bottom": ORANGE,
+        "left": RED,
     }
     #objects.append(Square(pos=Vector3(randint(100, WIDTH-100), randint(100, HEIGHT-100), randint(1, 5)), size=150, edgeThickness=2, faceColors=faceColors))
-    objects.append(Sphere(pos=Vector3(3, 3, 1), radius=150, resolution=10, edgeThickness=1, faceColors=faceColors))
+    objects.append(Sphere(color=RED, pos=Vector3(randint(10, 30)/10, randint(10, 30)/10, 1), radius=150, resolution=25, edgeThickness=1, faceColors=faceColors))
 
 # States
 leftButtonDown = False
@@ -314,9 +297,11 @@ while True:
         rotationAdd = rotationAdd.lerp(Vector3(0, 0, 0), rotationAddCapLerp)
 
     # Add global position and rotation
-    if not autoResetGlobalPosition and not leftButtonDown and positionAdd.length_squared() > 0:
+    if not autoResetGlobalPosition and not leftButtonDown and not rightButtonDown and positionAdd.length_squared() > 0:
+        print("Adding global position")
         GLOBAL_POSITION += positionAdd * .1
-    if not autoResetGlobalRotation and not rightButtonDown and rotationAdd.length_squared() > 0:
+    if not autoResetGlobalRotation and not rightButtonDown and not leftButtonDown and rotationAdd.length_squared() > 0:
+        print("Adding global rotation")
         GLOBAL_ROTATION += rotationAdd * .1
 
     # Reset global position and rotation
@@ -334,7 +319,7 @@ while True:
 
     # Draw objects
     for obj in objects:
-        obj.draw(paintFaces=False)
+        obj.draw(paintFaces=True, drawEdges=True)
 
     # Show FPS
     drawText(f"FPS: {1000/dt:.0f}", Vector2(), fontSize=15)
