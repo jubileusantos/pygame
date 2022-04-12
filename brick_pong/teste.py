@@ -34,8 +34,6 @@ while True:
     window.fill(RED)
 
     twtSprite = pygame.image.load(os.path.join(__file__, "../twt.png"))
-    w = 350
-    h = 350
     twtSprite = pygame.transform.scale(twtSprite, (mouseX, mouseY))
 
     window.blit(twtSprite, (0, 0))

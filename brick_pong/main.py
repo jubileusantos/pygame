@@ -37,7 +37,7 @@ def drawText(text: str, pos: Vector2, fontSize: int=18, fontType: str="comicsans
 
 def addBall():
     if len(balls) < maxBalls:
-        balls.append(Ball(initialBallPos, Vector2(randint(-2, 2), -1), ballSpeed, ballRadius, ballColor))
+        balls.append(Ball(Vector2(movePad.pos.x, initialBallPos.y), Vector2(randint(-2, 2), -1), ballSpeed, ballRadius, ballColor, ballSprite))
 
     if debugMode:
         print(len(balls))
@@ -52,27 +52,32 @@ class Brick:
         self.maxHealth = health
         self.health = self.maxHealth
         self.isMovePad = isMovePad
+        if self.textureFile:
+            # Load sprite
+            self.brickSprite = pygame.image.load(os.path.join(__file__, f"../{self.textureFile}")).convert()
+            self.brickSprite = pygame.transform.scale(self.brickSprite, (self.width, self.height))
 
     def draw(self, surface: pygame.Surface=window, drawOutline: bool=True) -> None:
-        if self.textureFile:
-            # Load sprite and draw it on the window
-            brickSprite = pygame.image.load(os.path.join(__file__, f"../{self.textureFile}"))
-            brickSprite = pygame.transform.scale(brickSprite, (self.width, self.height))
+        if self.health <= 0 and not self.isMovePad:
+            return
 
+        if self.textureFile:
             # Draw damage on top of brick
             healthRatio = self.health / self.maxHealth
             percentPerDamageLevel = 1 / (len(damageSprites) + 1)
             if healthRatio <= 1 - percentPerDamageLevel:
                 idx = map(self.health, 0, self.maxHealth, 0, len(damageSprites))
-                damageSprite = pygame.image.load(os.path.join(__file__, f"../{damageSprites[math.floor(idx)]}"))
+                damageSprite = pygame.image.load(os.path.join(__file__, f"../{damageSprites[math.floor(idx)]}")).convert_alpha()
                 damageSprite = pygame.transform.scale(damageSprite, (self.width, self.height))
-                brickSprite.blit(damageSprite, (0, 0))
+                #print(f"IndexError with index {idx} for health: {self.health}")
+                self.brickSprite.blit(damageSprite, (0, 0))
 
+            # Draw brick's health if debug mode is activated
             if debugMode:
-                drawText(str(self.health), Vector2(brickSprite.get_width()/2, brickSprite.get_height()/2), bold=True, textColor=GREEN, centerX=-1, centerY=-1, surface=brickSprite)
+                drawText(str(self.health), Vector2(self.brickSprite.get_width()/2, self.brickSprite.get_height()/2), bold=True, textColor=GREEN, centerX=-1, centerY=-1, surface=self.brickSprite)
             
             # Draw sprite on screen
-            surface.blit(brickSprite, (self.pos.x - self.width/2, self.pos.y - self.height/2))
+            surface.blit(self.brickSprite, (self.pos.x - self.width/2, self.pos.y - self.height/2))
 
         else:
             # Draw the rect
@@ -88,18 +93,23 @@ class Brick:
 
     def onHit(self) -> None:
         self.health -= 1
-        if not self.isMovePad and self.health >= 0 and randint(0, 1000)/1000 < powerupDropChance:
+        if not self.isMovePad and self.health == 0 and randint(0, 1000)/1000 < powerupDropChance:
             powerupType = choices(possiblePowerups, powerupWeights, k=1)[0]
             powerups.append(Powerup(Vector2(self.pos.x, self.pos.y), powerupType=powerupType,
                             color=powerupColors[powerupType], duration=randint(4, 7), fallSpeed=randint(1, 4)))
             
 class Ball:
-    def __init__(self, pos: Vector2, vel: Vector2, speed: float=3, radius: int=15, color: tuple=RED) -> None:
+    def __init__(self, pos: Vector2, vel: Vector2, speed: float=3, radius: int=15, color: tuple=RED,
+                 textureFile: str='') -> None:
         self.pos = pos
         self.vel = vel.normalize()
         self.color = color
         self.radius = radius
         self.speed = speed
+        self.ballSprite = None
+        if textureFile:
+            self.ballSprite = pygame.image.load(os.path.join(__file__, f"../{textureFile}")).convert_alpha()
+            self.ballSprite = pygame.transform.scale(self.ballSprite, (self.radius*2, self.radius*2))
     
     def update(self) -> bool:
         if self.vel.x == 0:
@@ -206,7 +216,10 @@ class Ball:
         return False
 
     def draw(self, surface: pygame.Surface=window) -> None:
-        pygame.draw.circle(surface, self.color, (self.pos.x, self.pos.y), self.radius)
+        if self.ballSprite:
+            surface.blit(self.ballSprite, (self.pos.x - self.radius, self.pos.y - self.radius))
+        else:
+            pygame.draw.circle(surface, self.color, (self.pos.x, self.pos.y), self.radius)
 
 class Powerup:
     def __init__(self, pos: Vector2, radius: int=15, fallSpeed: float=1, powerupType: str="fastBall", duration: float=3, color: tuple=BLACK) -> None:
@@ -267,19 +280,15 @@ class Powerup:
         if self.powerupType.lower() == "fastball":
             self.__initialState = speedMult
             speedMult = speedMult * fastBallSpeedMult
-            print(f"FastBall Start: {speedMult}")
         elif self.powerupType.lower() == "slowball":
             self.__initialState = speedMult
             speedMult = speedMult / slowBallSpeedMult
-            print(f"SlowBall Start: {speedMult}")
         elif self.powerupType.lower() == "bigpad":
             self.__initialState = movePad.width
             movePad.width *= bigPadSizeMult
-            print(f"BigPad Start: {movePad.width}")
         elif self.powerupType.lower() == "smallpad":
             self.__initialState = movePad.width
             movePad.width /= smallPadSizeMult
-            print(f"SmallPad Start: {movePad.width}")
         elif self.powerupType.lower() == "addball":
             addBall()
         else:
@@ -294,19 +303,15 @@ class Powerup:
         if self.powerupType.lower() == "fastball":
             #speedMult = self.__initialState
             speedMult = speedMult / fastBallSpeedMult
-            print(f"FastBall End: {speedMult}")
         elif self.powerupType.lower() == "slowball":
             #speedMult = self.__initialState]
             speedMult = speedMult * slowBallSpeedMult
-            print(f"SlowBall End: {speedMult}")
         elif self.powerupType.lower() == "bigpad":
             #movePad.width = self.__initialState
             movePad.width = movePad.width / bigPadSizeMult
-            print(f"BigPad End: {movePad.width}")
         elif self.powerupType.lower() == "smallpad":
             movePad.width = movePad.width * smallPadSizeMult
             #movePad.width = self.__initialState
-            print(f"SmallPad End: {movePad.width}")
 
     def draw(self, surface: pygame.Surface=window) -> None:
         pygame.draw.circle(surface, self.color, (self.pos.x, self.pos.y), self.radius)
@@ -326,13 +331,14 @@ damageSprites = [
     "damaged2.png",
     "damaged1.png",
 ]
+ballSprite = "ball.png"
 
 # States
 debugMode = False
 movementWithKeyboard = False
 generateFullLevel = False
 generateRandomLevel = True
-brickChance = .03
+brickChance = .4
 
 # Move Pad
 movePadGroundDistance = 50
@@ -390,7 +396,7 @@ level3 = [
     '..##..##..',
     '..........',
 ]
-chosenMap = level3
+chosenMap = level1
 
 # Setup level
 for i in range(brickCols):
@@ -410,13 +416,13 @@ for i in range(brickCols):
 
 # Balls configuration
 ballSpeed = 3
-speedMult = 1.5
-ballRadius = 10
+speedMult = 1
+ballRadius = 13
 ballColor = RED
 initialBallPos = Vector2(WIDTH/2, HEIGHT - movePadGroundDistance - 50)
 initialBallVel = Vector2(randint(-100, 100)/100, -1)
 balls: list[Ball] = []
-balls.append(Ball(initialBallPos, initialBallVel, ballSpeed, ballRadius, ballColor))
+balls.append(Ball(initialBallPos, initialBallVel, ballSpeed, ballRadius, ballColor, ballSprite))
 
 # Powerups
 powerupWeights = [
@@ -433,7 +439,7 @@ powerupColors = {
     'smallPad': RED,
     'addBall': (100, 0, 100)        # Purple
 }
-powerupDropChance = .25
+powerupDropChance = .45
 possiblePowerups = [
     'slowBall',
     'fastBall',
@@ -465,8 +471,6 @@ while True:
                 xMove += 1
             elif event.key == K_e:
                 addBall()
-            elif event.key == K_s:
-                print(speedMult)
         elif event.type == KEYUP:
             if event.key in (K_a, K_LEFT):
                 xMove += 1
@@ -481,7 +485,6 @@ while True:
         if not powerup.started:
             if powerup.touchedMovePad():
                 # Touched movePad, so start the powerup
-                print(f"Starting powerup of type {powerup.powerupType}")
                 powerup.start()
             else:
                 # Didn't touch, so draw the powerup
@@ -491,7 +494,6 @@ while True:
 
         # Check if it's done (duration ended)
         if powerup.started and powerup.isDone():
-            print("Ended")
             powerup.end()
             powerups.remove(powerup)
 
