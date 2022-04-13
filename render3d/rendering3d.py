@@ -7,6 +7,7 @@ import faceVertices
 from random import randint
 from math import cos, pi, sin, radians, inf
 
+# Init pygame
 pygame.init()
 WIDTH = 800
 HEIGHT = 800
@@ -14,6 +15,7 @@ window = pygame.display.set_mode((WIDTH, HEIGHT))
 clock = pygame.time.Clock()
 FPS = 6000
 
+# Colors
 WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
 RED = (255, 0, 0)
@@ -61,7 +63,7 @@ def drawText(text: str, pos: Vector2, fontSize: int=18, fontType: str="comicsans
 def sortMidpoints(zPoints: list[tuple[str, float]]):
   for i in range(len(zPoints)):
     for j in range(0, len(zPoints) - i - 1):
-      if zPoints[j][1] > zPoints[j + 1][1]:
+      if zPoints[j][1] < zPoints[j + 1][1]:
         temp = zPoints[j]
         zPoints[j] = zPoints[j+1]
         zPoints[j+1] = temp
@@ -80,7 +82,7 @@ class BaseObject:
         self.edgeThickness = edgeThickness
         self.cornerThickness = cornerThickness
         self.rotation = Vector3(0, 0, 0)
-        self.faceColors = faceColors
+        self.faceColors = faceColors or {}
         self.size = 1
         self.points: list[Vector3] = []
 
@@ -137,7 +139,7 @@ class BaseObject:
             if orthographicProjection:
                 z = 1
             else:
-                z = 1 / (GLOBAL_POSITION.z - Matrix.toVector3(point).z)
+                z = 1 / (GLOBAL_POSITION.z + Matrix.toVector3(point).z)
 
             projection: Matrix = Matrix([
                 [z, 0, 0],
@@ -212,7 +214,7 @@ class Cube(BaseObject):
                 pygame.draw.polygon(surface, face.color, face.vertices)
                 if drawEdges:
                     # Draw outlines
-                    pygame.draw.lines(surface, self.color, False, face.vertices)
+                    pygame.draw.lines(surface, self.color, False, face.vertices, self.edgeThickness)
 
 class Sphere(BaseObject):
     def __init__(self, pos: Vector3=None, radius: float=50, resolution: int=15, color: tuple=BLACK, edgeThickness: int=1,
@@ -262,9 +264,30 @@ class Sphere(BaseObject):
                     # Vertical
                     pygame.draw.line(surface, BLACK, projectedPoints[idx], projectedPoints[idx+1], self.edgeThickness)
 
-class RubikCube:
-    def __init__(self) -> None:
-        pass
+class RubiksCube:
+    def __init__(self, pos: Vector3, cubieSize: float) -> None:
+        self.pos = pos
+        self.cubieSize = cubieSize
+        self.cubes: list[Cube] = []
+
+        faceColors = {
+            "right": GREEN,
+            "front": YELLOW,
+            "back": BLUE,
+            "top": BLACK,
+            "bottom": ORANGE,
+            "left": RED,
+        }
+        for x in range(-1, 2):
+            for y in range(-1, 2):
+                for z in range(-1, 2):
+                    cubePos = Vector3(self.pos.x + x * self.cubieSize,self.pos.y +  y * self.cubieSize,self.pos.z +  z * self.cubieSize)
+                    cube = Cube(cubePos, self.cubieSize, faceColors=faceColors)
+                    self.cubes.append(cube)
+
+    def draw(self, surface: pygame.Surface=window, drawEdges: bool=True) -> None:
+        for cube in self.cubes:
+            cube.draw(surface, drawEdges=drawEdges, paintFaces=True)
 
 # Modes
 orthographicProjection = False         # If false, Perspective Projection will be used
@@ -282,99 +305,146 @@ positionAddCapLerp = .003
 rotationAddCapLerp = .001
 zoomStep = .1
 
-# Objects
-objects: list[BaseObject] = []
-for i in range(1):
+# Public methods for moving and rotating the scene
+def translate(x: float, y: float, z: float) -> None:
+    global GLOBAL_POSITION
+    GLOBAL_POSITION += Vector3(x, y, z)
+
+def rotateX(angle: float) -> None:
+    global GLOBAL_ROTATION
+    GLOBAL_ROTATION.x += angle
+
+def rotateY(angle: float) -> None:
+    global GLOBAL_ROTATION
+    GLOBAL_ROTATION.y += angle
+
+def rotateZ(angle: float) -> None:
+    global GLOBAL_ROTATION
+    GLOBAL_ROTATION.z += angle
+
+def rotate(angleX: float, angleY: float, angleZ: float) -> None:
+    global GLOBAL_ROTATION
+    GLOBAL_ROTATION += Vector3(angleX, angleY, angleZ)
+
+def changeZoom(diff: float) -> None:
+    global GLOBAL_POSITION
+    GLOBAL_POSITION.z = clamp(GLOBAL_POSITION.z - diff * zoomStep, 1, 1e10)
+
+def main():
+    global positionAdd, rotationAdd, GLOBAL_ROTATION, GLOBAL_POSITION
+    # Objects
+    objects: list[BaseObject] = []
     faceColors = {
-        "right": GREEN,
-        "front": YELLOW,
+        "right": RED,
+        "front": GREEN,
         "back": BLUE,
-        "top": BLACK,
-        "bottom": ORANGE,
-        "left": RED,
+        "top": WHITE,
+        "bottom": YELLOW,
+        "left": ORANGE,
     }
-    objects.append(Cube(pos=Vector3(randint(100, WIDTH-100), randint(100, HEIGHT-100), randint(1, 5)), size=250, edgeThickness=4, faceColors=faceColors))
-    #objects.append(Sphere(color=RED, pos=Vector3(randint(10, 30)/10, randint(10, 30)/10, 1), radius=150, resolution=25, edgeThickness=1, faceColors=faceColors))
+    objects.append(Cube(Vector3(WIDTH/2, HEIGHT/2, 1), 500, BLACK, edgeThickness=2, faceColors=faceColors))
 
-# States
-leftButtonDown = False
-rightButtonDown = False
+    # Generate cube circle
+    '''n = 100
+    r = 150
+    for i in range(n):
+        faceColors = {
+            "right": GREEN,
+            "front": YELLOW,
+            "back": BLUE,
+            "top": BLACK,
+            "bottom": ORANGE,
+            "left": RED,
+        }
+        angle = map(i, 0, n, 0, 2*pi)
+        x = WIDTH/2 + cos(angle - pi/2) * r
+        y = HEIGHT/2 + sin(angle - pi/2) * r
+        objects.append(Cube(pos=Vector3(x, y, 3), size=250, edgeThickness=4, faceColors=faceColors))
+        #objects.append(Sphere(color=RED, pos=Vector3(x, y, 3), radius=150, resolution=3, edgeThickness=1, faceColors=faceColors))'''
 
-dt = 1000/FPS
-while True:
-    mouseX = pygame.mouse.get_pos()[0]
-    mouseY = pygame.mouse.get_pos()[1]
-    mousePos = Vector2(mouseX, mouseY)
+    # States
+    leftButtonDown = False
+    rightButtonDown = False
 
-    for event in pygame.event.get():
-        if event.type == QUIT or (event.type == KEYDOWN and event.key == K_ESCAPE):
-            pygame.quit()
-            sys.exit()
-        elif event.type == MOUSEBUTTONDOWN:
-            mouseDown = True
-        elif event.type == MOUSEBUTTONUP:
-            mouseDown = False
-        elif event.type == MOUSEWHEEL:
-            GLOBAL_POSITION.z = clamp(GLOBAL_POSITION.z - event.y * zoomStep, 1, 1e10)
-        elif event.type == MOUSEMOTION:
-            if leftButtonDown:
-                # If left button is pressed, move position
-                positionAdd = Vector3(event.rel[0], event.rel[1], 0)
-                GLOBAL_POSITION += Vector3(event.rel[0], event.rel[1], 0)
-            if rightButtonDown:
-                # If right button is pressed, rotate world
-                rotationAdd = Vector3(-event.rel[1], -event.rel[0], 0)
-                GLOBAL_ROTATION += Vector3(-event.rel[1], -event.rel[0], 0)
+    dt = 1000/FPS
+    while True:
+        mouseX = pygame.mouse.get_pos()[0]
+        mouseY = pygame.mouse.get_pos()[1]
+        mousePos = Vector2(mouseX, mouseY)
 
-    # Mouse input
-    left, middle, right = pygame.mouse.get_pressed()
-    leftButtonDown, rightButtonDown = left, right
+        for event in pygame.event.get():
+            if event.type == QUIT or (event.type == KEYDOWN and event.key == K_ESCAPE):
+                pygame.quit()
+                sys.exit()
+            elif event.type == MOUSEBUTTONDOWN:
+                mouseDown = True
+            elif event.type == MOUSEBUTTONUP:
+                mouseDown = False
+            elif event.type == MOUSEWHEEL:
+                GLOBAL_POSITION.z = clamp(GLOBAL_POSITION.z - event.y * zoomStep, 1, 1e10)
+            elif event.type == MOUSEMOTION:
+                if leftButtonDown:
+                    # If left button is pressed, move position
+                    positionAdd = Vector3(event.rel[0], event.rel[1], 0)
+                    GLOBAL_POSITION += Vector3(event.rel[0], event.rel[1], 0)
+                if rightButtonDown:
+                    # If right button is pressed, rotate world
+                    rotationAdd = Vector3(event.rel[1], -event.rel[0], 0)
+                    GLOBAL_ROTATION += Vector3(event.rel[1], event.rel[0], 0)
 
-    window.fill(WHITE)
+        # Mouse input
+        left, middle, right = pygame.mouse.get_pressed()
+        leftButtonDown, rightButtonDown = left, right
 
-    # Lerp global position and rotation offsets towards zero
-    # Position
-    if positionAdd.length_squared() < .01:
-        positionAdd = Vector3(0, 0, 0)
-    else:
-        positionAdd = positionAdd.lerp(Vector3(0, 0, 0), positionAddCapLerp)
-    # Rotation
-    if rotationAdd.length_squared() < .01:
-        rotationAdd = Vector3(0, 0, 0)
-    else:
-        rotationAdd = rotationAdd.lerp(Vector3(0, 0, 0), rotationAddCapLerp)
+        window.fill(WHITE)
 
-    # Add global position and rotation
-    if not autoResetGlobalPosition and not leftButtonDown and not rightButtonDown and positionAdd.length_squared() > 0:
-        GLOBAL_POSITION += positionAdd * .1
-    if not autoResetGlobalRotation and not rightButtonDown and not leftButtonDown and rotationAdd.length_squared() > 0:
-        GLOBAL_ROTATION += rotationAdd * .1
-
-    # Reset global position and rotation
-    if not leftButtonDown and autoResetGlobalPosition and GLOBAL_POSITION != Vector3(0, 0, 0):
-        if GLOBAL_POSITION.length_squared() < 1:
-            GLOBAL_POSITION = Vector3(0, 0, GLOBAL_POSITION.z)
+        # Lerp global position and rotation offsets towards zero
+        # Position
+        if positionAdd.length_squared() < .01:
+            positionAdd = Vector3(0, 0, 0)
         else:
-            GLOBAL_POSITION = GLOBAL_POSITION.lerp(Vector3(0, 0, GLOBAL_POSITION.z), positionResetLerp)
-
-    if not rightButtonDown and autoResetGlobalRotation and GLOBAL_ROTATION != Vector3(0, 0, 0):
-        if GLOBAL_ROTATION.length_squared() < .5:
-            GLOBAL_ROTATION = Vector3(0, 0, 0)
+            positionAdd = positionAdd.lerp(Vector3(0, 0, 0), positionAddCapLerp)
+        # Rotation
+        if rotationAdd.length_squared() < .01:
+            rotationAdd = Vector3(0, 0, 0)
         else:
-            GLOBAL_ROTATION = GLOBAL_ROTATION.lerp(Vector3(0, 0, 0), rotationResetLerp)
+            rotationAdd = rotationAdd.lerp(Vector3(0, 0, 0), rotationAddCapLerp)
 
-    # Draw objects
-    for obj in objects:
-        obj.draw(paintFaces=True, drawEdges=True)
+        # Add global position and rotation
+        if not autoResetGlobalPosition and not leftButtonDown and not rightButtonDown and positionAdd.length_squared() > 0:
+            GLOBAL_POSITION += positionAdd * .1
+        if not autoResetGlobalRotation and not rightButtonDown and not leftButtonDown and rotationAdd.length_squared() > 0:
+            GLOBAL_ROTATION += rotationAdd * .1
 
-    # Show FPS
-    drawText(f"FPS: {1000/dt:.0f}", Vector2(), fontSize=15)
+        # Reset global position and rotation
+        if not leftButtonDown and autoResetGlobalPosition and GLOBAL_POSITION != Vector3(0, 0, 0):
+            if GLOBAL_POSITION.length_squared() < 1:
+                GLOBAL_POSITION = Vector3(0, 0, GLOBAL_POSITION.z)
+            else:
+                GLOBAL_POSITION = GLOBAL_POSITION.lerp(Vector3(0, 0, GLOBAL_POSITION.z), positionResetLerp)
 
-    pygame.display.update()
-    dt = clock.tick(FPS)
+        if not rightButtonDown and autoResetGlobalRotation and GLOBAL_ROTATION != Vector3(0, 0, 0):
+            if GLOBAL_ROTATION.length_squared() < .5:
+                GLOBAL_ROTATION = Vector3(0, 0, 0)
+            else:
+                GLOBAL_ROTATION = GLOBAL_ROTATION.lerp(Vector3(0, 0, 0), rotationResetLerp)
 
-'''
-TODO:
- - A esfera rotaciona ao redor de um outro ponto, e não em volta de si mesmo. nao faço ideia do q fazer todavia
+        # Draw objects
+        for obj in objects:
+            obj.draw(paintFaces=True, drawEdges=True)
 
-'''
+        # Show FPS
+        drawText(f"FPS: {clock.get_fps():.0f}", Vector2(), fontSize=15)
+
+        pygame.display.update()
+        dt = clock.tick(FPS)
+
+    '''
+    TODO:
+    - A esfera rotaciona ao redor de um outro ponto, e não em volta de si mesmo. nao faço ideia do q fazer todavia
+
+    '''
+
+# Movement
+if __name__ == "__main__":
+    main()
