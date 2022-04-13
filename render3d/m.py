@@ -258,7 +258,8 @@ class Sphere(BaseObject):
                     pygame.draw.line(surface, BLACK, projectedPoints[idx], projectedPoints[idx+1], self.edgeThickness)
 
 class RubikCube:
-    
+    def __init__(self) -> None:
+        pass
 
 # Modes
 orthographicProjection = False         # If false, Perspective Projection will be used

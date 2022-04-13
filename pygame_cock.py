@@ -93,7 +93,7 @@ for _ in range(numPelos):
     pelo = []
     newX, newY = None, None
     for i in range(pelosSegments):
-        angle = randint(45, 270)
+        angle = randint(45, 290)
         r = randint(round(bolaR - bolaR/pelosRdiv), bolaR)
         x = bolaEpos.x + cos(radians(angle)) * r
         y = bolaEpos.y + sin(radians(angle)) * r
@@ -107,7 +107,7 @@ for _ in range(numPelos):
     pelo = []
     newX, newY = None, None
     for i in range(pelosSegments):
-        angle = randint(-90, 135)
+        angle = randint(-110, 135)
         r = randint(round(bolaR - bolaR/pelosRdiv), bolaR)
         x = bolaDpos[0] + cos(radians(angle)) * r
         y = bolaDpos[1] + sin(radians(angle)) * r
@@ -120,7 +120,7 @@ for _ in range(numPelos):
 
 # Veias
 veiaR = 105
-veiasN = 25
+veiasN = 10
 veiasSegmentos = 45
 veiaCor = (255, 30, 0)
 veiaGrossura = 3

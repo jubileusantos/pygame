@@ -189,6 +189,10 @@ diamondPoints = [
     -40
 ]
 
+randomPoints = []
+for i in range(15):
+    randomPoints.append(randint(1, 359))
+
 chosenShape = starPoints
 vertices = getVerticesForPolygon(Vector2(WIDTH/2, HEIGHT/2), chosenShape)
 #vertices = getVerticesForPolygon(Vector2(WIDTH/2, HEIGHT/2), [0, 140, 220, 0])
