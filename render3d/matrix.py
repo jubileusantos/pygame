@@ -118,7 +118,10 @@ class Matrix:
     ])
 
 if __name__ == "__main__":
-    projection = Matrix(cols=10, rows=10)
+    c = 3
+    projection = Matrix(cols=c, rows=c)
+    for i in range(c):
+        projection.matrix[i][i] = 1
     print(projection)
 
     point = Vector3(15, 0, 0)

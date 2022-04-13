@@ -199,19 +199,14 @@ class Cube(BaseObject):
             # Sort mid points for correct face drawing
             sortMidpoints(zPoints)
 
-            # Draw faces
+
             for f in zPoints:
                 face: Face = None
-
-                # Get face for given name
                 for f1 in faces:
                     if f1.name == f[0]:
                         face = f1
-
-                # Draw face
                 pygame.draw.polygon(surface, face.color, face.vertices)
                 if drawEdges:
-                    # Draw outlines
                     pygame.draw.lines(surface, self.color, False, face.vertices)
 
 class Sphere(BaseObject):
@@ -263,8 +258,7 @@ class Sphere(BaseObject):
                     pygame.draw.line(surface, BLACK, projectedPoints[idx], projectedPoints[idx+1], self.edgeThickness)
 
 class RubikCube:
-    def __init__(self) -> None:
-        pass
+    
 
 # Modes
 orthographicProjection = False         # If false, Perspective Projection will be used
