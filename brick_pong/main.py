@@ -116,102 +116,106 @@ class Ball:
             self.vel.x += .1
         if self.vel.y == 0:
             self.vel.y += .1
-        # Calculate next position
-        targetPos = self.pos + self.vel.normalize() * self.speed * speedMult
+        # Calculate steps of physics simulation
+        global dt
+        stepDT = dt / ballPhysicsSteps
+        for _ in range(ballPhysicsSteps):
+            # Calculate next position
+            targetPos = self.pos + self.vel.normalize() * self.speed * speedMult * stepDT
 
-        if targetPos.y > HEIGHT - self.radius:
-            # Eliminate this ball
-            return True
+            if targetPos.y > HEIGHT - self.radius:
+                # Eliminate this ball
+                return True
 
-        # Collision with borders
-        if targetPos.x < self.radius or targetPos.x > WIDTH - self.radius:
-            self.vel.x *= -1
-        if targetPos.y < self.radius or targetPos.y > HEIGHT - self.radius:
-            self.vel.y *= -1
+            # Collision with borders
+            if targetPos.x < self.radius or targetPos.x > WIDTH - self.radius:
+                self.vel.x *= -1
+            if targetPos.y < self.radius or targetPos.y > HEIGHT - self.radius:
+                self.vel.y *= -1
 
-        # Get the smallest possible area to check collisions for performance
-        areaTL = Vector2(0, 0)
-        areaTL.x = min(self.pos.x, targetPos.x)
-        areaTL.y = min(self.pos.y, targetPos.y)
-        areaTL -= Vector2(self.radius, self.radius) * 2
-        areaTL.x = max(areaTL.x, 0)
-        areaTL.y = max(areaTL.y, 0)
-        areaBR = Vector2(0, 0)
-        areaBR.x = max(self.pos.x, targetPos.x)
-        areaBR.y = max(self.pos.y, targetPos.y)
-        areaBR += Vector2(self.radius, self.radius) * 2
-        areaBR.x = min(areaBR.x, WIDTH)
-        areaBR.y = min(areaBR.y, HEIGHT)
+            # Get the smallest possible area to check collisions for performance
+            areaTL = Vector2(0, 0)
+            areaTL.x = min(self.pos.x, targetPos.x)
+            areaTL.y = min(self.pos.y, targetPos.y)
+            areaTL -= Vector2(self.radius, self.radius) * 2
+            areaTL.x = max(areaTL.x, 0)
+            areaTL.y = max(areaTL.y, 0)
+            areaBR = Vector2(0, 0)
+            areaBR.x = max(self.pos.x, targetPos.x)
+            areaBR.y = max(self.pos.y, targetPos.y)
+            areaBR += Vector2(self.radius, self.radius) * 2
+            areaBR.x = min(areaBR.x, WIDTH)
+            areaBR.y = min(areaBR.y, HEIGHT)
 
-        # Check collision for all bricks in the calculated area
-        for brick in bricks + [movePad]:
-            if clamp(brick.pos.x, areaTL.x - brick.width/2, areaBR.x + brick.width/2) == brick.pos.x and clamp(brick.pos.y, areaTL.y - brick.height/2, areaBR.y + brick.height/2) == brick.pos.y:
-                # Calculate
-                nearestPoint = Vector2()
-                nearestPoint.x = max(brick.pos.x - brick.width/2, min(targetPos.x, brick.pos.x + brick.width/2))
-                nearestPoint.y = max(brick.pos.y - brick.height/2, min(targetPos.y, brick.pos.y + brick.height/2))
+            # Check collision for all bricks in the calculated area
+            for brick in bricks + [movePad]:
+                if clamp(brick.pos.x, areaTL.x - brick.width/2, areaBR.x + brick.width/2) == brick.pos.x and clamp(brick.pos.y, areaTL.y - brick.height/2, areaBR.y + brick.height/2) == brick.pos.y:
+                    # Calculate
+                    nearestPoint = Vector2()
+                    nearestPoint.x = max(brick.pos.x - brick.width/2, min(targetPos.x, brick.pos.x + brick.width/2))
+                    nearestPoint.y = max(brick.pos.y - brick.height/2, min(targetPos.y, brick.pos.y + brick.height/2))
 
-                rayToNearest = nearestPoint - targetPos
-                try:
-                    overlap = self.radius  - rayToNearest.magnitude()
-                except ZeroDivisionError:
-                    overlap = 0
-
-                if overlap > 0:
-                    brick.onHit()
+                    rayToNearest = nearestPoint - targetPos
                     try:
-                        normalized = rayToNearest.normalize()
-                    except ValueError:
-                        normalized = rayToNearest
+                        overlap = self.radius  - rayToNearest.magnitude()
+                    except ZeroDivisionError:
+                        overlap = 0
 
-                    # Adjust velocity when the rotation degree is horizontal or vertical
-                    deg = math.degrees(math.atan2(normalized.y, normalized.x))
-                    if abs(deg - 90) < .1 or abs(deg + 90) < .1:
-                        # Calculate normal of face and reflect
-                        if abs(nearestPoint.y - brick.pos.y - brick.height/2) < .1:
-                            # Right wall
-                            # Calculate normal of left/right wall
-                            start = Vector2(brick.pos.x - brick.width/2, brick.pos.y - brick.height/2)
-                            end = Vector2(brick.pos.x + brick.width/2, brick.pos.y - brick.height/2)
-                            direc = (end - start).normalize()
-                            normal = Vector2(-direc.y, direc.x)
-                            self.vel.reflect_ip(normal)
-                        elif abs(nearestPoint.y - brick.pos.y + brick.height/2) < .1:
-                            # Left wall
-                            start = Vector2(brick.pos.x - brick.width/2, brick.pos.y + brick.height/2)
-                            end = Vector2(brick.pos.x + brick.width/2, brick.pos.y + brick.height/2)
-                            direc = (end - start).normalize()
-                            normal = Vector2(-direc.y, direc.x)
-                            self.vel.reflect_ip(normal)
-                    elif abs(deg - 180) < .1 or deg < .1:
-                        if abs(nearestPoint.x - brick.pos.x - brick.width/2) < .1:
-                            # Right wall
-                            # Calculate normal of right wall
-                            start = Vector2(brick.pos.x - brick.width/2, brick.pos.y - brick.height/2)
-                            end = Vector2(brick.pos.x - brick.width/2, brick.pos.y + brick.height/2)
-                            direc = (end - start).normalize()
-                            normal = Vector2(-direc.y, direc.x)
-                            self.vel.reflect_ip(normal)
-                        elif abs(nearestPoint.x - brick.pos.x + brick.width/2) < .1:
-                            # Left wall
-                            start = Vector2(brick.pos.x + brick.width/2, brick.pos.y - brick.height/2)
-                            end = Vector2(brick.pos.x + brick.width/2, brick.pos.y + brick.height/2)
-                            direc = (end - start).normalize()
-                            normal = Vector2(-direc.y, direc.x)
-                            self.vel.reflect_ip(normal)
-                    else:
-                        self.vel = -normalized
+                    if overlap > 0:
+                        brick.onHit()
+                        try:
+                            normalized = rayToNearest.normalize()
+                        except ValueError:
+                            normalized = rayToNearest
 
-                    #self.vel = -normalized
-                    targetPos = targetPos - normalized * overlap
+                        # Displace back by overlap
+                        self.pos -= normalized * overlap
 
-        if debugMode:
-            pygame.draw.rect(window, GREEN, (areaTL.x, areaTL.y, areaBR.x - areaTL.x, areaBR.y - areaTL.y), 0)
+                        # Adjust velocity when the rotation degree is horizontal or vertical
+                        deg = math.degrees(math.atan2(normalized.y, normalized.x))
+                        if abs(deg - 90) < .1 or abs(deg + 90) < .1:
+                            # Calculate normal of face and reflect
+                            if abs(nearestPoint.y - brick.pos.y - brick.height/2) < .1:
+                                # Right wall
+                                # Calculate normal of left/right wall
+                                start = Vector2(brick.pos.x - brick.width/2, brick.pos.y - brick.height/2)
+                                end = Vector2(brick.pos.x + brick.width/2, brick.pos.y - brick.height/2)
+                                direc = (end - start).normalize()
+                                normal = Vector2(-direc.y, direc.x)
+                                self.vel.reflect_ip(normal)
+                            elif abs(nearestPoint.y - brick.pos.y + brick.height/2) < .1:
+                                # Left wall
+                                start = Vector2(brick.pos.x - brick.width/2, brick.pos.y + brick.height/2)
+                                end = Vector2(brick.pos.x + brick.width/2, brick.pos.y + brick.height/2)
+                                direc = (end - start).normalize()
+                                normal = Vector2(-direc.y, direc.x)
+                                self.vel.reflect_ip(normal)
+                        elif abs(deg - 180) < .1 or deg < .1:
+                            if abs(nearestPoint.x - brick.pos.x - brick.width/2) < .1:
+                                # Right wall
+                                # Calculate normal of right wall
+                                start = Vector2(brick.pos.x - brick.width/2, brick.pos.y - brick.height/2)
+                                end = Vector2(brick.pos.x - brick.width/2, brick.pos.y + brick.height/2)
+                                direc = (end - start).normalize()
+                                normal = Vector2(-direc.y, direc.x)
+                                self.vel.reflect_ip(normal)
+                            elif abs(nearestPoint.x - brick.pos.x + brick.width/2) < .1:
+                                # Left wall
+                                start = Vector2(brick.pos.x + brick.width/2, brick.pos.y - brick.height/2)
+                                end = Vector2(brick.pos.x + brick.width/2, brick.pos.y + brick.height/2)
+                                direc = (end - start).normalize()
+                                normal = Vector2(-direc.y, direc.x)
+                                self.vel.reflect_ip(normal)
+                        else:
+                            self.vel = -normalized
 
-        # Update position
-        targetPos.x = clamp(targetPos.x, self.radius + 1, WIDTH - self.radius - 1)
-        targetPos.y = clamp(targetPos.y, self.radius + 1, HEIGHT - self.radius - 1)
-        self.pos = self.pos + self.vel * self.speed * speedMult
+                        #self.vel = -normalized
+                        targetPos = targetPos - normalized * overlap
+
+            if debugMode:
+                pygame.draw.rect(window, GREEN, (areaTL.x, areaTL.y, areaBR.x - areaTL.x, areaBR.y - areaTL.y), 0)
+
+            self.pos = self.pos + self.vel * self.speed * speedMult * stepDT
 
         return False
 
@@ -336,7 +340,7 @@ ballSprite = "ball.png"
 # States
 debugMode = False
 movementWithKeyboard = False
-generateFullLevel = False
+generateFullLevel = True
 generateRandomLevel = True
 brickChance = .4
 
@@ -415,7 +419,8 @@ for i in range(brickCols):
             bricks.append(Brick(Vector2(x + brickW/2, y + brickH/2), Vector2(brickW, brickH), textureFile=sprite, health=randint(1, 4)))
 
 # Balls configuration
-ballSpeed = 3
+ballSpeed = 150
+ballPhysicsSteps = 1
 speedMult = 1
 ballRadius = 13
 ballColor = RED
@@ -454,12 +459,12 @@ bigPadSizeMult = 1.8
 smallPadSizeMult = 1.7
 powerups: list[Powerup] = []
 
-dt = 1000/FPS
+dt = 1/FPS
 while True:
     mouseX = pygame.mouse.get_pos()[0]
     mouseY = pygame.mouse.get_pos()[1]
     mousePos = Vector2(mouseX, mouseY)
-
+    
     for event in pygame.event.get():
         if event.type == QUIT or (event.type == KEYDOWN and event.key == K_ESCAPE):
             pygame.quit()
@@ -497,7 +502,6 @@ while True:
             powerup.end()
             powerups.remove(powerup)
 
-
     # Update pad position
     if movementWithKeyboard:
         movePad.pos.x = clamp(movePad.pos.x + xMove * moveSpeed, movePad.width/2, WIDTH - movePad.width/2)
@@ -511,7 +515,6 @@ while True:
     for brick in bricks[:]:
         if brick.health <= 0:
             bricks.remove(brick)
-            continue
 
     # Update balls
     for ball in balls[:]:
@@ -532,14 +535,12 @@ while True:
         if not powerup.started:
             powerup.draw()
 
-    try:
-        fps = 1000/dt
-    except ZeroDivisionError:
-        fps = 1000
-    drawText(f"FPS: {fps:.0f}", Vector2(), fontSize=25, textColor=RED)
+    # Draw FPS
+    drawText(f"FPS: {clock.get_fps():.0f}", Vector2(), fontSize=25, textColor=RED)
+    print(dt)
 
     pygame.display.update()
-    dt = clock.tick(FPS)
+    dt = clock.tick(FPS)/1000
 
 ''''
 TODO:
