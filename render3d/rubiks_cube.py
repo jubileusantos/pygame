@@ -7,6 +7,8 @@ from math import cos, pi, sin, radians, inf
 from time import time
 import rendering3d
 
+rendering3d.orthographicProjection = False
+
 pygame.init()
 WIDTH = 800
 HEIGHT = 800
@@ -21,6 +23,14 @@ BLUE = (0, 0, 255)
 GREEN = (0, 255, 0)
 YELLOW = (255, 255, 0)
 ORANGE = (255, 127, 0)
+
+def sortcubes(cubes: list[rendering3d.Cube]):
+    for i in range(len(cubes)):
+        for j in range(0, len(cubes) - i - 1):
+            if cubes[j].pos.z < cubes[j + 1].pos.z:
+                temp = cubes[j]
+                cubes[j] = cubes[j+1]
+                cubes[j+1] = temp
 
 def drawText(text: str, pos: Vector2, fontSize: int=18, fontType: str="comicsans", bold: bool=False,
              italic: bool=False, antiAlias: bool=False, textColor: tuple=BLACK, bgColor: tuple=None,
@@ -51,87 +61,65 @@ class RubiksCube:
             for y in range(self.dimensions):
                 yList: list[rendering3d.Cube] = []
                 for z in range(self.dimensions):
-                    cubePos = Vector3(self.pos.x - self.cubieSize/2 + x * self.cubieSize/2, self.pos.y - self.cubieSize/2 +  y * self.cubieSize/2, self.pos.z +  z * self.cubieSize/2)
+                    cubePos = Vector3(self.pos.x - self.cubieSize/2 + x * self.cubieSize/2, self.pos.y - self.cubieSize/2 +  y * self.cubieSize/2, self.pos.z - self.cubieSize/2 +  z * self.cubieSize/2)
                     cube = rendering3d.Cube(cubePos, self.cubieSize, faceColors=self.faceColors)
                     yList.append(cube)
                     #self.cubes.append(cube)
                 xList.append(yList)
             self.cubes.append(xList)
 
-    ''' function rotateX(angle) {
-            var cos = Math.cos(angle),
-                sin = Math.sin(angle);
+    def rotateCubeX(self, angle: float) -> None:
+        pass
 
-            for(var i = 0; i < points.length; i++) {
-                var p = points[i],
-                    y = p.y * cos - p.z * sin,
-                    z = p.z * cos + p.y * sin;
-                p.y = y;
-                p.z = z;
-            }
-            needsUpdate = true;
-        }
+    def rotateCubeY(self, angle: float) -> None:
+        pass
 
-        function rotateY(angle) {
-            var cos = Math.cos(angle),
-                sin = Math.sin(angle);
+    def rotateCubeZ(self, angle: float) -> None:
+        pass
 
-            for(var i = 0; i < points.length; i++) {
-                var p = points[i],
-                    x = p.x * cos - p.z * sin,
-                    z = p.z * cos + p.x * sin;
-                p.x = x;
-                p.z = z;
-            }
-            needsUpdate = true;
-        }
-
-        function rotateZ(angle) {
-            var cos = Math.cos(angle),
-                sin = Math.sin(angle);
-
-            for(var i = 0; i < points.length; i++) {
-                var p = points[i],
-                    x = p.x * cos - p.y * sin,
-                    y = p.y * cos + p.x * sin;
-                p.x = x;
-                p.y = y;
-            }
-            needsUpdate = true;
-        }'''
-
-    def rotateX(self, angle: float) -> None:
+    def rotateRowX(self, angle: float, xIdx: int=0) -> None:
         self.rotation.x += angle
         # Update all cubes
         cosA = cos(radians(angle))
         sinA = sin(radians(angle))
-        for cube in self.getCubes():
-            cube.rotateX(angle)
-            cube.pos.y = self.pos.y*0 + cube.pos.y * cosA - cube.pos.z * sinA
-            cube.pos.z = self.pos.z*0 + cube.pos.z * cosA + cube.pos.y * sinA
+        for y in range(self.dimensions):
+            for z in range(self.dimensions):
+                cube = self.cubes[xIdx][y][z]
+                cube.rotateX(angle)
+                posY = cosA * (cube.pos.y - self.pos.y) - sinA * (cube.pos.z - self.pos.z) + self.pos.y
+                posZ = sinA * (cube.pos.y - self.pos.y) + cosA * (cube.pos.z - self.pos.z) + self.pos.z
+                cube.pos.y = posY
+                cube.pos.z = posZ
 
-    def rotateY(self, angle: float) -> None:
-        self.rotation.x += angle
+    def rotateRowY(self, angle: float, yIdx: int=0) -> None:
+        self.rotation.y += angle
         # Update all cubes
         cosA = cos(radians(angle))
         sinA = sin(radians(angle))
-        for cube in self.getCubes():
-            cube.rotateY(angle)
-            cube.pos.x = self.pos.x*0 + cube.pos.x * cosA - cube.pos.z * sinA
-            cube.pos.z = self.pos.z*0 + cube.pos.z * cosA + cube.pos.x * sinA
+        for x in range(self.dimensions):
+            for z in range(self.dimensions):
+                cube = self.cubes[x][yIdx][z]
+                cube.rotateY(-angle)
+                posX = sinA * (cube.pos.x - self.pos.x) - cosA * (cube.pos.z - self.pos.z) + self.pos.x
+                posZ = cosA * (cube.pos.x - self.pos.x) + sinA * (cube.pos.z - self.pos.z) + self.pos.z
+                cube.pos.x = posX
+                cube.pos.z = posZ
 
-    def rotateZ(self, angle: float) -> None:
-        self.rotation.x += angle
+    def rotateRowZ(self, angle: float, zIdx: int=0) -> None:
+        self.rotation.z += angle
         # Update all cubes
         cosA = cos(radians(angle))
         sinA = sin(radians(angle))
-        for cube in self.getCubes():
-            cube.rotateZ(angle)
-            cube.pos.x = self.pos.x*0 + cube.pos.x * cosA - cube.pos.y * sinA
-            cube.pos.y = self.pos.y*0 + cube.pos.y * cosA + cube.pos.x * sinA
+        for x in range(self.dimensions):
+            for y in range(self.dimensions):
+                cube = self.cubes[x][y][zIdx]
+                cube.rotateZ(angle)
+                posX = cosA * (cube.pos.x - self.pos.x) - sinA * (cube.pos.y - self.pos.y) + self.pos.x
+                posY = sinA * (cube.pos.x - self.pos.x) + cosA * (cube.pos.y - self.pos.y) + self.pos.y
+                cube.pos.x = posX
+                cube.pos.y = posY
 
     def updateCubes(self) -> None:
-        totalSize = self.cubieSize * self.dimensions
         for x in range(self.dimensions):
             for y in range(self.dimensions):
                 for z in range(self.dimensions):
@@ -146,23 +134,20 @@ class RubiksCube:
         return cubes
 
     def draw(self, surface: pygame.Surface=window, drawEdges: bool=True) -> None:
-        '''self.pos.x = WIDTH/2 + cos(time() * 3) * 150
-        self.pos.y = HEIGHT/2 + sin(time() * 3) * 150
-        self.updateCubes()'''
+        # self.rotateRowX(1, 0)
+        # self.rotateRowY(1, 0)
+        # self.rotateRowZ(1, 0)
 
-        '''for x in range(self.dimensions):
-            for y in range(self.dimensions):
-                #self.cubes[x][y][0].faceColors = {}
-                self.cubes[x][y][0].pos += Vector3(0, 1, 0)
-                self.cubes[x][y][1].pos += Vector3(1, 0, 0)
-                self.cubes[x][y][2].pos += Vector3(-1, 0, 0)'''
+        cubes = self.getCubes()
+        sortcubes(cubes)
 
-        #self.rotateX(1)
-
-        for cube in self.getCubes():
+        for cube in cubes:
             cube.draw(surface, drawEdges=drawEdges, paintFaces=True)
 
-rubiksCube = RubiksCube(Vector3(WIDTH/2, HEIGHT, 0), 150)
+rubiksCube = RubiksCube(Vector3(WIDTH/2, HEIGHT/2, 0), 150)
+#rubiksCube.rotateRowX(5, 0)
+#rubiksCube.rotateRowX(5, 1)
+#rubiksCube.rotateRowX(5, 2)
 
 while True:
     # Mouse input
@@ -182,6 +167,25 @@ while True:
                 rendering3d.translate(event.rel[0], event.rel[1], 0)
             if rightButtonDown:
                 rendering3d.rotate(event.rel[1], event.rel[0], 0)
+        elif event.type == KEYDOWN:
+            if event.key == K_q:
+                rubiksCube.rotateRowX(90, 0)
+            elif event.key == K_w:
+                rubiksCube.rotateRowX(90, 1)
+            elif event.key == K_e:
+                rubiksCube.rotateRowX(90, 2)
+            elif event.key == K_a:
+                rubiksCube.rotateRowZ(90, 0)
+            elif event.key == K_s:
+                rubiksCube.rotateRowZ(90, 1)
+            elif event.key == K_d:
+                rubiksCube.rotateRowZ(90, 2)
+            elif event.key == K_z:
+                rubiksCube.rotateRowY(90, 0)
+            elif event.key == K_x:
+                rubiksCube.rotateRowY(90, 1)
+            elif event.key == K_c:
+                rubiksCube.rotateRowY(90, 2)
 
     window.fill(WHITE)
     
@@ -192,3 +196,9 @@ while True:
 
     pygame.display.update()
     clock.tick(FPS)
+
+'''
+TODO:
+ - Botar pra funcionar com orthographic projection (aumentar o espaçamento entre os cubies)
+ - Aplicar rotação do próprio rubiksCube para cada cubo
+'''

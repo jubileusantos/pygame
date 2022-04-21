@@ -6,6 +6,7 @@ from matrix import Matrix
 import faceVertices
 from random import randint
 from math import cos, pi, sin, radians, inf
+import os.path
 
 # Init pygame
 pygame.init()
@@ -76,13 +77,19 @@ class Face:
 
 class BaseObject:
     def __init__(self, pos: Vector3, color: tuple=BLACK, edgeThickness: int=1,
-                 cornerThickness: int=1, faceColors: dict=None) -> None:
+                 cornerThickness: int=1, faceColors: dict=None, faceTextures: dict=None) -> None:
         self.pos = pos
         self.color = color
         self.edgeThickness = edgeThickness
         self.cornerThickness = cornerThickness
         self.rotation = Vector3(0, 0, 0)
         self.faceColors = faceColors or {}
+        self.faceTextures = {}
+        if faceTextures:
+            for faceName, spriteName in faceTextures.items():
+                print(f"Setting face {faceName}")
+                self.faceTextures[faceName] = pygame.image.load(os.path.join(__file__, f"../{spriteName}")).convert()
+                #faceTextures.update()
         self.size = 1
         self.points: list[Vector3] = []
 
@@ -139,7 +146,10 @@ class BaseObject:
             if orthographicProjection:
                 z = 1
             else:
-                z = 1 / (GLOBAL_POSITION.z + Matrix.toVector3(point).z)
+                try:
+                    z = 1 / (GLOBAL_POSITION.z + Matrix.toVector3(point).z)
+                except ZeroDivisionError:
+                    z = 1e-10
 
             projection: Matrix = Matrix([
                 [z, 0, 0],
@@ -153,13 +163,14 @@ class BaseObject:
         
         return projectedPoints
 
-    def draw(self, surface: pygame.Surface=window, drawEdges: bool=True, paintFaces: bool=False) -> None:
+    def draw(self, surface: pygame.Surface=window, drawEdges: bool=True, paintFaces: bool=False,
+             drawTextures: bool=False) -> None:
         pass
 
 class Cube(BaseObject):
     def __init__(self, pos: Vector3=None, size: float=50, color: tuple=BLACK, edgeThickness: int=1,
-                 cornerThickness: int=1, faceColors: dict=None) -> None:
-        super().__init__(pos, color, edgeThickness, cornerThickness, faceColors)
+                 cornerThickness: int=1, faceColors: dict=None, faceTextures: dict=None) -> None:
+        super().__init__(pos, color, edgeThickness, cornerThickness, faceColors, faceTextures=faceTextures)
         self.size = size
         self.points: list[Vector3] = [
             # Back
@@ -175,46 +186,80 @@ class Cube(BaseObject):
             Vector3(-1, 1, 1),
         ]
 
-    def draw(self, surface: pygame.Surface=window, drawEdges: bool=True, paintFaces: bool=False) -> None:
+    def draw(self, surface: pygame.Surface=window, drawEdges: bool=True, paintFaces: bool=False,
+             drawTextures: bool=False) -> None:
         # Get points
         projectedPoints: list[Vector2] = self.getPoints()
 
         # Paint faces
         zPoints = []
         faces: list[Face] = []
-        if paintFaces:
-            # Calculate color and vertices for each face
-            for face, indexes in faceVertices.cube.items():
-                if len(indexes) == 0: continue
-                color = self.faceColors.setdefault(face, BLACK)
+        # Calculate color and vertices for each face
+        for face, indexes in faceVertices.cube.items():
+            if len(indexes) == 0: continue
+            color = self.faceColors.setdefault(face, BLACK)
 
-                rotatedPoints = self.getRotated()
-                midPoint = Matrix.toVector3(rotatedPoints[indexes[0]]).lerp(Matrix.toVector3(rotatedPoints[indexes[2]]), .5)
-                zPoints.append((face, midPoint.z))
+            rotatedPoints = self.getRotated()
+            midPoint = Matrix.toVector3(rotatedPoints[indexes[0]]).lerp(Matrix.toVector3(rotatedPoints[indexes[2]]), .5)
+            zPoints.append((face, midPoint.z))
 
-                faceList: list[Vector2] = []
-                for index in indexes:
-                    faceList.append(projectedPoints[index])
+            faceList: list[Vector2] = [projectedPoints[i] for i in indexes]
+            
+            faces.append(Face(face, faceList, color))
 
-                faces.append(Face(face, faceList, color))
+        # Sort mid points for correct face drawing
+        sortMidpoints(zPoints)
 
-            # Sort mid points for correct face drawing
-            sortMidpoints(zPoints)
+        # Draw faces
+        for f in zPoints:
+            face: Face = None
 
-            # Draw faces
-            for f in zPoints:
-                face: Face = None
+            # Get face for given name
+            for f1 in faces:
+                if f1.name == f[0]:
+                    face = f1
 
-                # Get face for given name
-                for f1 in faces:
-                    if f1.name == f[0]:
-                        face = f1
+            # Draw texture
+            textureSurface: pygame.Surface = self.faceTextures.get(face.name, None)
+            if drawTextures and textureSurface:
+                minX, maxX = WIDTH, 0
+                minY, maxY = HEIGHT, 0
+                for vertex in face.vertices:
+                    if vertex.x < minX:
+                        minX = vertex.x
+                    if vertex.x > maxX:
+                        maxX = vertex.x
+                    if vertex.y < minY:
+                        minY = vertex.y
+                    if vertex.y > maxY:
+                        maxY = vertex.y
 
-                # Draw face
+                # Set size and scale texture
+                size = Vector2(maxX - minX, maxY - minY)
+                textureSurface = pygame.transform.scale(textureSurface, size)
+
+                # Polygon surf
+                polygonSurf = pygame.Surface(size, BLEND_RGBA_MAX).convert_alpha()
+                polygonSurf.fill((255, 255, 255, 0))
+
+                # Polygon mask
+                pygame.draw.polygon(polygonSurf, BLACK, [(point.x - minX, point.y - minY) for point in face.vertices])
+                polygonMask = pygame.mask.from_surface(polygonSurf)
+                polygonMask.invert()
+                newPolygonSurf = polygonMask.to_surface()
+                newPolygonSurf.set_colorkey(BLACK)
+                
+                # Draw surfaces
+                window.blit(textureSurface, (minX, minY))
+                window.blit(newPolygonSurf, (minX, minY))
+
+            # Draw face
+            if paintFaces:
                 pygame.draw.polygon(surface, face.color, face.vertices)
-                if drawEdges:
-                    # Draw outlines
-                    pygame.draw.lines(surface, self.color, False, face.vertices, self.edgeThickness)
+
+            # Draw outlines
+            if drawEdges:
+                pygame.draw.lines(surface, self.color, False, face.vertices, self.edgeThickness)
 
 class Sphere(BaseObject):
     def __init__(self, pos: Vector3=None, radius: float=50, resolution: int=15, color: tuple=BLACK, edgeThickness: int=1,
@@ -235,7 +280,8 @@ class Sphere(BaseObject):
                 z = self.pos.z + cos(lon)
                 self.points.append(Vector3(x, y, z))
 
-    def draw(self, surface: pygame.Surface=window, drawEdges: bool=True, paintFaces: bool=False) -> None:
+    def draw(self, surface: pygame.Surface=window, drawEdges: bool=True, paintFaces: bool=False,
+             drawTextures: bool=False) -> None:
         # Get points
         projectedPoints = self.getPoints()
 
@@ -263,31 +309,6 @@ class Sphere(BaseObject):
                     pygame.draw.line(surface, BLACK, projectedPoints[idx], projectedPoints[idx1], self.edgeThickness)
                     # Vertical
                     pygame.draw.line(surface, BLACK, projectedPoints[idx], projectedPoints[idx+1], self.edgeThickness)
-
-class RubiksCube:
-    def __init__(self, pos: Vector3, cubieSize: float) -> None:
-        self.pos = pos
-        self.cubieSize = cubieSize
-        self.cubes: list[Cube] = []
-
-        faceColors = {
-            "right": GREEN,
-            "front": YELLOW,
-            "back": BLUE,
-            "top": BLACK,
-            "bottom": ORANGE,
-            "left": RED,
-        }
-        for x in range(-1, 2):
-            for y in range(-1, 2):
-                for z in range(-1, 2):
-                    cubePos = Vector3(self.pos.x + x * self.cubieSize,self.pos.y +  y * self.cubieSize,self.pos.z +  z * self.cubieSize)
-                    cube = Cube(cubePos, self.cubieSize, faceColors=faceColors)
-                    self.cubes.append(cube)
-
-    def draw(self, surface: pygame.Surface=window, drawEdges: bool=True) -> None:
-        for cube in self.cubes:
-            cube.draw(surface, drawEdges=drawEdges, paintFaces=True)
 
 # Modes
 orthographicProjection = False         # If false, Perspective Projection will be used
@@ -342,7 +363,15 @@ def main():
         "bottom": YELLOW,
         "left": ORANGE,
     }
-    objects.append(Cube(Vector3(WIDTH/2, HEIGHT/2, 1), 500, BLACK, edgeThickness=2, faceColors=faceColors))
+    faceTextures = {
+        "left": "shrek.png",
+        "right": "shrek.png",
+        "top": "atumalaca.png",
+        "bottom": "atumalaca.png",
+        "back": "connie.png",
+        "front": "connie.png",
+    }
+    objects.append(Cube(Vector3(WIDTH/2, HEIGHT/2, 1), 400, BLACK, edgeThickness=2, faceColors=faceColors, faceTextures=faceTextures))
 
     # Generate cube circle
     '''n = 100
@@ -359,7 +388,7 @@ def main():
         angle = map(i, 0, n, 0, 2*pi)
         x = WIDTH/2 + cos(angle - pi/2) * r
         y = HEIGHT/2 + sin(angle - pi/2) * r
-        objects.append(Cube(pos=Vector3(x, y, 3), size=250, edgeThickness=4, faceColors=faceColors))
+        objects.append(Cube(pos=Vector3(x, y, 3), size=50, edgeThickness=1, faceColors=faceColors))
         #objects.append(Sphere(color=RED, pos=Vector3(x, y, 3), radius=150, resolution=3, edgeThickness=1, faceColors=faceColors))'''
 
     # States
@@ -391,6 +420,9 @@ def main():
                     # If right button is pressed, rotate world
                     rotationAdd = Vector3(event.rel[1], -event.rel[0], 0)
                     GLOBAL_ROTATION += Vector3(event.rel[1], event.rel[0], 0)
+            else:
+                # Reset position and rotation adds
+                positionAdd, rotationAdd = Vector3(0, 0, 0), Vector3(0, 0, 0)
 
         # Mouse input
         left, middle, right = pygame.mouse.get_pressed()
@@ -431,7 +463,7 @@ def main():
 
         # Draw objects
         for obj in objects:
-            obj.draw(paintFaces=True, drawEdges=True)
+            obj.draw(paintFaces=False, drawEdges=True, drawTextures=True)
 
         # Show FPS
         drawText(f"FPS: {clock.get_fps():.0f}", Vector2(), fontSize=15)
