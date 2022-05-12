@@ -379,20 +379,8 @@ def main():
         "back": "lagarta.jpg",
         "front": "lagarta.jpg",
     }
-    afolouTextures = {
-        "left": "afalou1.jpg",
-        "right": "afalou2.jpg",
-        "top": "afalou3.jpg",
-        "bottom": "afalou4.jpeg",
-        "back": "afalou5.jpeg",
-        "front": "afalou6.jpg",
-    }
-    objects.append(Cube(Vector3(WIDTH/2, HEIGHT/2, 1), 400, BLACK, edgeThickness=2, faceColors=faceColors, faceTextures=afolouTextures))
 
-    pygame.mixer.init()
-    musica = pygame.mixer.music.load("musica.mp3")
-    pygame.mixer.music.set_volume(15)
-    pygame.mixer.music.play()
+    objects.append(Cube(Vector3(WIDTH/2, HEIGHT/2, 1), 400, BLACK, edgeThickness=2, faceColors=faceColors, faceTextures=lagartaTextures))
 
     # Generate cube circle
     '''n = 100
