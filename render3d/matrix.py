@@ -2,18 +2,18 @@ from __future__ import annotations
 from pygame.math import Vector2, Vector3
 
 class Matrix:
-    def __init__(self, matrix: list[list[float]]=None, cols: int=None, rows: int=None):
+    def __init__(self, matrix: list=None, cols: int=None, rows: int=None):
         if matrix:
-            self.matrix: list[list[float]] = matrix
+            self.matrix: list = matrix
         else:
-            self.matrix: list[list[float]] = []
+            self.matrix: list = []
             for _ in range(rows):
                 self.matrix.append([0 for _ in range(cols)])
 
     def getIndex(self, x, y) -> float:
         return self.matrix[y][x]
 
-    def getDimensions(self) -> tuple[int, int]:
+    def getDimensions(self) -> tuple:
         return len(self.matrix), len(self.matrix[0])
 
     def getInverse(self) -> Matrix:

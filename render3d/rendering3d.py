@@ -35,7 +35,7 @@ def clamp(n, minVal, maxVal):
         return maxVal
     return n
 
-def pointInPolygon(point: Vector2, vertices: list[Vector2]) -> bool:
+def pointInPolygon(point: Vector2, vertices: list) -> bool:
     c = 0
     p1 = vertices[0]
     n = len(vertices)
@@ -61,7 +61,7 @@ def drawText(text: str, pos: Vector2, fontSize: int=18, fontType: str="comicsans
     textRect = textSurface.get_rect()
     surface.blit(textSurface, [pos.x + (textRect.width/2) * centerX, pos.y + (textRect.height/2) * centerY])
 
-def sortMidpoints(zPoints: list[tuple[str, float]]):
+def sortMidpoints(zPoints: list):
   for i in range(len(zPoints)):
     for j in range(0, len(zPoints) - i - 1):
       if zPoints[j][1] < zPoints[j + 1][1]:
@@ -70,7 +70,7 @@ def sortMidpoints(zPoints: list[tuple[str, float]]):
         zPoints[j+1] = temp
 
 class Face:
-    def __init__(self, name: str, vertices: list[Vector2], color: tuple=BLACK) -> None:
+    def __init__(self, name: str, vertices: list, color: tuple=BLACK) -> None:
         self.name = name
         self.vertices = vertices
         self.color = color
@@ -88,10 +88,10 @@ class BaseObject:
         if faceTextures:
             for faceName, spriteName in faceTextures.items():
                 print(f"Setting face {faceName}")
-                self.faceTextures[faceName] = pygame.image.load(os.path.join(__file__, f"../{spriteName}")).convert()
+                self.faceTextures[faceName] = pygame.image.load(f"{spriteName}").convert()
                 #faceTextures.update()
         self.size = 1
-        self.points: list[Vector3] = []
+        self.points: list = []
 
     def rotateX(self, angle) -> None:
         self.rotation.x += radians(angle)
@@ -102,7 +102,7 @@ class BaseObject:
     def rotateZ(self, angle) -> None:
         self.rotation.z += radians(angle)
 
-    def getRotated(self) -> list[Matrix]:
+    def getRotated(self) -> list:
         # Create rotation matrices
         rotationX: Matrix = Matrix([
             [1, 0, 0],
@@ -121,7 +121,7 @@ class BaseObject:
         ])
 
         # Save the projected points
-        rotatedPoints: list[Matrix] = []
+        rotatedPoints: list = []
 
         # Calculate all vertex positions
         for point in self.points:
@@ -134,11 +134,11 @@ class BaseObject:
 
         return rotatedPoints
 
-    def getPoints(self) -> list[Vector2]:
+    def getPoints(self) -> list:
 
         # Save the projected points
         rotatedPoints = self.getRotated()
-        projectedPoints: list[Vector2] = []
+        projectedPoints: list = []
 
         # Calculate all vertex positions
         for point in rotatedPoints:
@@ -172,7 +172,7 @@ class Cube(BaseObject):
                  cornerThickness: int=1, faceColors: dict=None, faceTextures: dict=None) -> None:
         super().__init__(pos, color, edgeThickness, cornerThickness, faceColors, faceTextures=faceTextures)
         self.size = size
-        self.points: list[Vector3] = [
+        self.points: list = [
             # Back
             Vector3(-1, -1, -1),
             Vector3(1, -1, -1),
@@ -189,11 +189,11 @@ class Cube(BaseObject):
     def draw(self, surface: pygame.Surface=window, drawEdges: bool=True, paintFaces: bool=False,
              drawTextures: bool=False) -> None:
         # Get points
-        projectedPoints: list[Vector2] = self.getPoints()
+        projectedPoints: list = self.getPoints()
 
         # Paint faces
         zPoints = []
-        faces: list[Face] = []
+        faces: list = []
         # Calculate color and vertices for each face
         for face, indexes in faceVertices.cube.items():
             if len(indexes) == 0: continue
@@ -203,7 +203,7 @@ class Cube(BaseObject):
             midPoint = Matrix.toVector3(rotatedPoints[indexes[0]]).lerp(Matrix.toVector3(rotatedPoints[indexes[2]]), .5)
             zPoints.append((face, midPoint.z))
 
-            faceList: list[Vector2] = [projectedPoints[i] for i in indexes]
+            faceList: list = [projectedPoints[i] for i in indexes]
             
             faces.append(Face(face, faceList, color))
 
@@ -288,7 +288,7 @@ class Sphere(BaseObject):
         if paintFaces:
             # Paint faces
             for i in range(self.resolution):
-                horizontalPoints: list[Vector2] = []
+                horizontalPoints: list = []
                 for j in range(self.resolution):
                     horizontalPoints.append(projectedPoints[i + (j) * self.resolution])
                     
@@ -354,7 +354,7 @@ def changeZoom(diff: float) -> None:
 def main():
     global positionAdd, rotationAdd, GLOBAL_ROTATION, GLOBAL_POSITION
     # Objects
-    objects: list[BaseObject] = []
+    objects: list = []
     faceColors = {
         "right": RED,
         "front": GREEN,
@@ -364,14 +364,35 @@ def main():
         "left": ORANGE,
     }
     faceTextures = {
-        "left": "shrek.png",
-        "right": "shrek.png",
+        "left": "atumalaca.png",
+        "right": "atumalaca.png",
         "top": "atumalaca.png",
         "bottom": "atumalaca.png",
-        "back": "connie.png",
-        "front": "connie.png",
+        "back": "atumalaca.png",
+        "front": "atumalaca.png",
     }
-    objects.append(Cube(Vector3(WIDTH/2, HEIGHT/2, 1), 400, BLACK, edgeThickness=2, faceColors=faceColors, faceTextures=faceTextures))
+    lagartaTextures = {
+        "left": "lagarta.jpg",
+        "right": "lagarta.jpg",
+        "top": "lagarta.jpg",
+        "bottom": "lagarta.jpg",
+        "back": "lagarta.jpg",
+        "front": "lagarta.jpg",
+    }
+    afolouTextures = {
+        "left": "afalou1.jpg",
+        "right": "afalou2.jpg",
+        "top": "afalou3.jpg",
+        "bottom": "afalou4.jpeg",
+        "back": "afalou5.jpeg",
+        "front": "afalou6.jpg",
+    }
+    objects.append(Cube(Vector3(WIDTH/2, HEIGHT/2, 1), 400, BLACK, edgeThickness=2, faceColors=faceColors, faceTextures=afolouTextures))
+
+    pygame.mixer.init()
+    musica = pygame.mixer.music.load("musica.mp3")
+    pygame.mixer.music.set_volume(15)
+    pygame.mixer.music.play()
 
     # Generate cube circle
     '''n = 100
