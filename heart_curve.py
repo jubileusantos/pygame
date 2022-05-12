@@ -22,7 +22,7 @@ alpha = 255
 frame = 0
 centerX = WIDTH/2
 centerY = HEIGHT/2
-precision = 35
+precision = 20
 clearScreen = True
 radiusX = 20
 radiusY = 20
@@ -58,6 +58,7 @@ while True:
 
     alpha = abs(sin(frame/45)) * 255
 
+    pygame.display.set_caption(f"FPS: {clock.get_fps():.0f}")
     pygame.display.update()
     frame += 1
     clock.tick(FPS)
