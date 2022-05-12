@@ -1,4 +1,4 @@
-cube: dict[str, list[int]] = {
+cube: dict = {
     "left": [0, 3, 7, 4, 0],
     "right": [1, 2, 6, 5, 1],
     "front": [4, 5, 6, 7, 4],
