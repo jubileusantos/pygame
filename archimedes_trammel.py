@@ -35,31 +35,42 @@ class MovingBall:
         self.lineWidth = lineWidth
         self.alphaOffset = alphaOffset
 
+    def getBallPos(self) -> Vector2:
+        return self.lineStart.lerp(self.lineEnd, self.ballAlpha)
+
     def drawLine(self, surface: pygame.Surface=window) -> None:
         pygame.draw.line(surface, self.lineColor, self.lineStart, self.lineEnd, self.lineWidth)
 
     def drawBall(self, surface: pygame.Surface=window) -> None:
-        pygame.draw.circle(surface, self.ballColor, self.lineStart.lerp(self.lineEnd, self.ballAlpha), self.ballRadius)
+        pygame.draw.circle(surface, self.ballColor, self.getBallPos(), self.ballRadius)
 
-bgCircleRadius = 250
+bgCircleRadius = 350
 bgCircleColor = RED
 bgCircleCenter = Vector2(WIDTH/2, HEIGHT/2)
-lines = 256
+lineColor = BLACK
+lineWidth = 3
+lines = 4
+generateLines = True
+drawFinalShape = False
+finalShapeColor = (100, 100, 100)
 movingBalls: list[MovingBall] = []
-for i in range(lines):
-    # Get angle and line start and end position
-    angle = map(i, 0, lines, 0, 180)
-    startX = bgCircleCenter.x + cos(radians(angle)) * bgCircleRadius
-    startY = bgCircleCenter.y + sin(radians(angle)) * bgCircleRadius
 
-    endX = bgCircleCenter.x + cos(radians(angle + 180)) * bgCircleRadius
-    endY = bgCircleCenter.y + sin(radians(angle + 180)) * bgCircleRadius
+if generateLines:
+    for i in range(lines):
+        # Get angle and line start and end position
+        angle = map(i, 0, lines, 0, 180)
+        startX = bgCircleCenter.x + cos(radians(angle)) * bgCircleRadius
+        startY = bgCircleCenter.y + sin(radians(angle)) * bgCircleRadius
 
-    # Get alpha offset
-    offset = pi/lines * i
+        endX = bgCircleCenter.x + cos(radians(angle + 180)) * bgCircleRadius
+        endY = bgCircleCenter.y + sin(radians(angle + 180)) * bgCircleRadius
 
-    # Add to list
-    movingBalls.append(MovingBall(Vector2(startX, startY), Vector2(endX, endY), alphaOffset=offset))
+        # Get alpha offset
+        offset = pi/lines * i
+
+        # Add to list
+        movingBalls.append(MovingBall(Vector2(startX, startY), Vector2(endX, endY), alphaOffset=offset,
+                                      lineWidth=lineWidth, lineColor=lineColor))
 
 while True:
     mouseX = pygame.mouse.get_pos()[0]
@@ -69,13 +80,6 @@ while True:
         if event.type == QUIT or (event.type == KEYUP and event.key == K_ESCAPE):
             pygame.quit()
             sys.exit()
-        elif event.type == KEYDOWN:
-            if event.key == K_e:
-                # Add moving ball
-                pass
-            elif event.key == K_r and len(movingBalls) > 0:
-                # Remove moving ball
-                pass
 
     window.fill(BLACK)
 
@@ -83,8 +87,8 @@ while True:
     pygame.draw.circle(window, bgCircleColor, bgCircleCenter, bgCircleRadius)
 
     # Calculate line drawing based on mouse pos
-    idxEnd = map(mouseX, 0, WIDTH, 0, len(movingBalls))
-
+    # idxEnd = map(mouseX, 0, WIDTH, 0, len(movingBalls))
+    idxEnd = len(movingBalls)
 
     # Update alphas and draw lines
     for i in range(len(movingBalls)):
@@ -99,12 +103,20 @@ while True:
         m.drawLine()
 
     # Draw balls
+    ballsPos: list[Vector2] = []
     for i in range(len(movingBalls)):
         if i > idxEnd:
             continue
 
         m = movingBalls[i]
+        ballsPos.append(m.getBallPos())
         m.drawBall()
 
+    # Draw lines between the balls to reveal a shape
+    if drawFinalShape:
+        ballsPos.append(ballsPos[0])
+        pygame.draw.lines(window, finalShapeColor, False, ballsPos, lineWidth)
+
+    pygame.display.set_caption(f"Trammel of Archimedes | FPS: {clock.get_fps():.0f}")
     pygame.display.update()
     clock.tick(FPS)
