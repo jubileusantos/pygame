@@ -8,6 +8,8 @@ from random import randint
 from math import cos, pi, sin, radians, inf
 import os.path
 
+pathFile = os.path.dirname(__file__)
+
 # Init pygame
 pygame.init()
 WIDTH = 800
@@ -87,8 +89,8 @@ class BaseObject:
         self.faceTextures = {}
         if faceTextures:
             for faceName, spriteName in faceTextures.items():
-                print(f"Setting face {faceName}")
-                self.faceTextures[faceName] = pygame.image.load(f"{spriteName}").convert()
+                # self.faceTextures[faceName] = pygame.image.load(f"{spriteName}").convert()
+                self.faceTextures[faceName] = pygame.image.load(os.path.join(pathFile, f"{spriteName}")).convert()
                 #faceTextures.update()
         self.size = 1
         self.points: list = []
@@ -102,7 +104,7 @@ class BaseObject:
     def rotateZ(self, angle) -> None:
         self.rotation.z += radians(angle)
 
-    def getRotated(self) -> list:
+    def getRotated(self) -> list[Vector3]:
         # Create rotation matrices
         rotationX: Matrix = Matrix([
             [1, 0, 0],
@@ -134,7 +136,7 @@ class BaseObject:
 
         return rotatedPoints
 
-    def getPoints(self) -> list:
+    def getPoints(self) -> list[Vector2]:
 
         # Save the projected points
         rotatedPoints = self.getRotated()
@@ -165,7 +167,10 @@ class BaseObject:
 
     def draw(self, surface: pygame.Surface=window, drawEdges: bool=True, paintFaces: bool=False,
              drawTextures: bool=False) -> None:
-        pass
+        projectedPoints: list = self.getPoints()
+
+        for point in projectedPoints:
+            pygame.draw.circle(surface, self.color, point, self.cornerThickness)
 
 class Cube(BaseObject):
     def __init__(self, pos: Vector3=None, size: float=50, color: tuple=BLACK, edgeThickness: int=1,
@@ -364,23 +369,47 @@ def main():
         "left": ORANGE,
     }
     faceTextures = {
-        "left": "atumalaca.png",
-        "right": "atumalaca.png",
-        "top": "atumalaca.png",
-        "bottom": "atumalaca.png",
-        "back": "atumalaca.png",
-        "front": "atumalaca.png",
+        "left": "images/atumalaca.png",
+        "right": "images/atumalaca.png",
+        "top": "images/atumalaca.png",
+        "bottom": "images/atumalaca.png",
+        "back": "images/atumalaca.png",
+        "front": "images/atumalaca.png",
     }
     lagartaTextures = {
-        "left": "lagarta.jpg",
-        "right": "lagarta.jpg",
-        "top": "lagarta.jpg",
-        "bottom": "lagarta.jpg",
-        "back": "lagarta.jpg",
-        "front": "lagarta.jpg",
+        "left": "images/lagarta.jpg",
+        "right": "images/lagarta.jpg",
+        "top": "images/lagarta.jpg",
+        "bottom": "images/lagarta.jpg",
+        "back": "images/lagarta.jpg",
+        "front": "images/lagarta.jpg",
     }
 
     objects.append(Cube(Vector3(WIDTH/2, HEIGHT/2, 1), 400, BLACK, edgeThickness=2, faceColors=faceColors, faceTextures=lagartaTextures))
+
+    points: list[Vector3] = [
+        Vector3(-4, -1, -1.5),
+        Vector3(-4, 1, -1.5),
+        Vector3(-3, 1, -1.5),
+        Vector3(-3, 0, -1.5),
+        Vector3(3, 0, -1.5),
+        Vector3(3, 1, -1.5),
+        Vector3(4, 1, -1.5),
+        Vector3(4, -1, -1.5),
+
+        Vector3(4, -1, 1.5),
+        Vector3(4, 1, 1.5),
+        Vector3(3, 1, 1.5),
+        Vector3(3, 0, 1.5),
+        Vector3(-3, 0, 1.5),
+        Vector3(-3, 1, 1.5),
+        Vector3(-4, 1, 1.5),
+        Vector3(-4, -1, 1.5),
+    ]
+    shape = BaseObject(Vector3(WIDTH/2, HEIGHT/2, 3))
+    shape.points = points
+    shape.size = 150
+    objects.append(shape)
 
     # Generate cube circle
     '''n = 100
