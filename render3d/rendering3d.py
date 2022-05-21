@@ -21,6 +21,8 @@ FPS = 6000
 # Colors
 WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
+CYAN = (0, 255, 255)
+PURPLE = (127, 0, 255)
 RED = (255, 0, 0)
 BLUE = (0, 0, 255)
 GREEN = (0, 255, 0)
@@ -85,16 +87,14 @@ class BaseObject:
         self.edgeThickness = edgeThickness
         self.cornerThickness = cornerThickness
         self.rotation = Vector3(0, 0, 0)
-        self.faces = faces
+        self.faces = faces or []
         self.faceColors: list[tuple] = faceColors or {}
         self.faceTextures: list[pygame.Surface] = {}
         if faceTextures:
             for faceId, spriteName in enumerate(faceTextures):
-                # self.faceTextures[faceName] = pygame.image.load(f"{spriteName}").convert()
                 self.faceTextures[faceId] = pygame.image.load(os.path.join(pathFile, f"{spriteName}")).convert()
-                #faceTextures.update()
         self.size = 1
-        self.points: list = []
+        self.points: list[Vector3] = []
 
     def rotateX(self, angle) -> None:
         self.rotation.x += radians(angle)
@@ -274,7 +274,7 @@ class Cube(BaseObject):
             rotatedPoints = self.getRotated()
             midPoint = sum([Matrix.toVector3(rotatedPoints[index]).z for index in indexes]) / len(indexes)
             # midPoint = Matrix.toVector3(rotatedPoints[indexes[0]]).lerp(Matrix.toVector3(rotatedPoints[indexes[2]]), .5)
-            zPoints.append((faceId, midPoint.z))
+            zPoints.append((faceId, midPoint))
 
             faceList: list = [projectedPoints[i] for i in indexes]
             
@@ -354,25 +354,55 @@ class Sphere(BaseObject):
                 z = self.pos.z + cos(lon)
                 self.points.append(Vector3(x, y, z))
 
+        # Create faces
+        self.faces: list[list[int]] = []
+        for i in range(self.resolution-1):
+            for j in range(self.resolution-1):
+                i0 = i + j * self.resolution
+                i1 = (i+1) + j * self.resolution
+                i2 = i + (j+1) * self.resolution
+                i3 = (i+1) + (j+1) * self.resolution
+                self.faces.append([i0, i1, i3, i2, i0])
+
     def draw(self, surface: pygame.Surface=window, drawEdges: bool=True, paintFaces: bool=False,
              drawTextures: bool=False) -> None:
         # Get points
         projectedPoints = self.getPoints()
+        rotatedPoints = self.getRotated()
 
+        zPoints: list[tuple[int, float]] = []
+        faces: list[Face] = []
         if paintFaces:
-            # Paint faces
-            for i in range(self.resolution):
-                horizontalPoints: list = []
-                for j in range(self.resolution):
-                    horizontalPoints.append(projectedPoints[i + (j) * self.resolution])
-                    
-                # Horizontal Lines
-                pygame.draw.polygon(surface, self.color, horizontalPoints)
+            for faceId, indexes in enumerate(self.faces):
+                midPoint = Matrix.toVector3(rotatedPoints[indexes[0]]).lerp(Matrix.toVector3(rotatedPoints[indexes[2]]), .5)
+                zPoints.append((faceId, midPoint.z))
 
-                # Vertical Lines
-                startIdx = i * self.resolution
-                endIdx = i * self.resolution + self.resolution
-                pygame.draw.polygon(surface, self.color, projectedPoints[startIdx:endIdx])
+                faceList: list = [projectedPoints[i] for i in indexes]
+                
+                color = pygame.Color(0, 0, 0)
+                color.hsla = (faceId / len(self.faces) * 360, 100, 50)
+                faces.append(Face(faceId, faceList, color))
+
+        # Sort mid points for correct face drawing
+        sortMidpoints(zPoints)
+
+        # Draw faces
+        for f in zPoints:
+            face: Face = None
+
+            # Get face for given name
+            for f1 in faces:
+                if f1.id == f[0]:
+                    face = f1
+                    break
+
+            # Draw face
+            if paintFaces:
+                pygame.draw.polygon(surface, face.color, face.vertices)
+
+            # Draw outlines
+            if drawEdges:
+                pygame.draw.lines(surface, self.color, False, face.vertices, self.edgeThickness)
 
         if drawEdges:
             for i in range(self.resolution-1):
@@ -437,14 +467,14 @@ def main():
         YELLOW,
         ORANGE,
     ]
-    faceTextures = {
-        "left": "images/atumalaca.png",
-        "right": "images/atumalaca.png",
-        "top": "images/atumalaca.png",
-        "bottom": "images/atumalaca.png",
-        "back": "images/atumalaca.png",
-        "front": "images/atumalaca.png",
-    }
+    faceTextures = [
+        "images/atumalaca.png",
+        "images/atumalaca.png",
+        "images/atumalaca.png",
+        "images/atumalaca.png",
+        "images/atumalaca.png",
+        "images/atumalaca.png",
+    ]
     lagartaTextures = [
         "images/lagarta.jpg",
         "images/lagarta.jpg",
@@ -454,6 +484,7 @@ def main():
         "images/lagarta.jpg",
     ]
     # objects.append(Cube(Vector3(WIDTH/2, HEIGHT/2, 1), 400, BLACK, edgeThickness=2, faceColors=faceColors, faceTextures=lagartaTextures))
+    #objects.append(Sphere(color=RED, pos=Vector3(0, 0, 3), radius=150, resolution=25, edgeThickness=1))
 
     # Import shape info
     import objects_info.shape
@@ -463,7 +494,16 @@ def main():
     shapeObj.points = objects_info.shape.vertices
     # shapeObj.faces = shape.faces
     shapeObj.size = 150
-    shapeObj.faceColors = [RED] * len(objects_info.shape.faces)
+    shapeObj.faceColors = [
+        RED,
+        BLUE,
+        BLACK,
+        CYAN,
+        YELLOW,
+        PURPLE,
+        GREEN,
+        ORANGE
+    ]
 
     # Add to list
     objects.append(shapeObj)
