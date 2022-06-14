@@ -5,6 +5,7 @@ from pygame.math import Vector2
 import math
 import numpy
 from random import randint
+from time import time
 
 pygame.init()
 WIDTH = 1300
@@ -21,7 +22,7 @@ GREEN = (0, 255, 0)
 
 def f(x: float) -> float:
     try:
-        return math.tan(x)
+        return math.sin(x)
     except ZeroDivisionError:
         return None
     except ValueError:
@@ -53,10 +54,10 @@ graphEndX = 100
 pointColor = (97, 97, 225)
 pointWidth = 3
 axisColor = (50, 50, 50)
-axisWidth = 1
+axisWidth = 2
 numsOnAxes = 5
 numsOffset = Vector2(-10, 10)
-numsDecimalDigits = 5
+numsDecimalDigits = 2
 numsAxisColor = (150, 150, 150)
 numsAxisWidth = 1
 
@@ -75,6 +76,7 @@ screenEndX = 10
 screenStartY = -10
 screenEndY = 10'''
 steps = 75
+numPoints = 1000
 
 while True:
     mouseX = pygame.mouse.get_pos()[0]
@@ -96,25 +98,63 @@ while True:
 
     window.fill(WHITE)
 
+    # Calculate plane offset
+    planeOffset = Vector2(graphOffset.x/WIDTH * graphDimension * 2, graphOffset.y/HEIGHT * graphDimension * 2)
+
     # Draw axes
     pygame.draw.line(window, axisColor, (0, HEIGHT/2 + graphOffset.y), (WIDTH, HEIGHT/2 + graphOffset.y), axisWidth)
     pygame.draw.line(window, axisColor, (WIDTH/2 + graphOffset.x, 0), (WIDTH/2 + graphOffset.x, HEIGHT), axisWidth)
 
+    # Draw number points
+    # Start with the middle zero
+    drawText("0", Vector2(WIDTH/2 + numsOffset.x + graphOffset.x, HEIGHT/2 + numsOffset.y + graphOffset.y), centerX=3, centerY=-1)
+
+    # Do on X and Y axis, up and down
+    for i in range(numsOnAxes):
+        # Calculate numbers and positions
+        # Left
+        numLeft = round(-graphDimension + graphDimension/numsOnAxes * i, numsDecimalDigits) # + planeOffset.x
+        xLeft = map(i, 0, numsOnAxes, 0, WIDTH/2)
+
+        # Right
+        numRight = round(graphDimension - graphDimension/numsOnAxes * i, numsDecimalDigits) # + planeOffset.x
+        xRight = map(i, 0, numsOnAxes, WIDTH, WIDTH/2)
+
+        # Up
+        numUp = round(graphDimension - graphDimension/numsOnAxes * i, numsDecimalDigits) # + planeOffset.y
+        yUp = map(i, 0, numsOnAxes, 0, HEIGHT/2)
+
+        # Down
+        numDown = round(-graphDimension + graphDimension/numsOnAxes * i, numsDecimalDigits) # + planeOffset.y
+        yDown = map(i, 0, numsOnAxes, HEIGHT, HEIGHT/2)
+
+        # Draw horizontal and vertical lines
+        pygame.draw.line(window, numsAxisColor, (xLeft + graphOffset.x, 0), (xLeft + graphOffset.x, HEIGHT), numsAxisWidth)
+        pygame.draw.line(window, numsAxisColor, (xRight + graphOffset.x, 0), (xRight + graphOffset.x, HEIGHT), numsAxisWidth)
+        pygame.draw.line(window, numsAxisColor, (0, yUp + graphOffset.y), (WIDTH, yUp + graphOffset.y), numsAxisWidth)
+        pygame.draw.line(window, numsAxisColor, (0, yDown + graphOffset.y), (WIDTH, yDown + graphOffset.y), numsAxisWidth)
+
+        # Draw the numbers on axes
+        drawText(str(numLeft), Vector2(xLeft + numsOffset.x + graphOffset.x, HEIGHT/2 + numsOffset.y + graphOffset.y), centerY=-1, centerX=0)
+        drawText(str(numRight), Vector2(xRight + numsOffset.x + graphOffset.x, HEIGHT/2 + numsOffset.y + graphOffset.y), centerY=-1, centerX=-1)
+        drawText(str(numUp), Vector2(WIDTH/2 + numsOffset.x + graphOffset.x, yUp + numsOffset.y + graphOffset.y), centerY=0, centerX=1)
+        drawText(str(numDown), Vector2(WIDTH/2 + numsOffset.x + graphOffset.x, yDown + numsOffset.y + graphOffset.y), centerY=0, centerX=1)
+
     # Calculate all points
-    points: list[Vector2] = []
-    lowestY = math.inf
-    highestY = -math.inf
-    for i in range(round(graphStartX*steps), round(graphEndX*steps)):
-        x = i/steps
+    points: list = []
+    #for i in range(round(graphStartX*steps), round(graphEndX*steps)):
+    for i in range(numPoints):
+        x = map(i, 0, numPoints-1, -graphDimension - planeOffset.x, graphDimension - planeOffset.x)
+        #x = i/steps
         y = f(x)
         if y is None:
             continue
 
         # Update highest and lowest Y
-        if y < lowestY:
-            lowestY = y
-        if y > highestY:
-            highestY = y
+        # if y < lowestY:
+        #     lowestY = y
+        # if y > highestY:
+        #     highestY = y
 
         points.append(Vector2(x, y))
 
@@ -134,41 +174,6 @@ while True:
                 pygame.draw.line(window, pointColor, (x1 + graphOffset.x, y1 + graphOffset.y), (x2 + graphOffset.x, y2 + graphOffset.y), pointWidth)
         else:
             pygame.draw.circle(window, pointColor, (x1 + graphOffset.x, y1 + graphOffset.y), pointWidth)
-
-    # Draw number points
-    # Start with the middle zero
-    drawText("0", Vector2(WIDTH/2 + numsOffset.x + graphOffset.x, HEIGHT/2 + numsOffset.y + graphOffset.y), centerX=3, centerY=-1)
-
-    # Do on X and Y axis, up and down
-    for i in range(numsOnAxes):
-        # Calculate numbers and positions
-        # Left
-        numLeft = round(-graphDimension + graphDimension/numsOnAxes * i, numsDecimalDigits)
-        xLeft = map(i, 0, numsOnAxes, 0, WIDTH/2)
-
-        # Right
-        numRight = round(graphDimension - graphDimension/numsOnAxes * i, numsDecimalDigits)
-        xRight = map(i, 0, numsOnAxes, WIDTH, WIDTH/2)
-
-        # Up
-        numUp = round(graphDimension - graphDimension/numsOnAxes * i, numsDecimalDigits)
-        yUp = map(i, 0, numsOnAxes, 0, HEIGHT/2)
-
-        # Down
-        numDown = round(-graphDimension + graphDimension/numsOnAxes * i, numsDecimalDigits)
-        yDown = map(i, 0, numsOnAxes, HEIGHT, HEIGHT/2)
-
-        # Draw horizontal and vertical lines
-        pygame.draw.line(window, numsAxisColor, (xLeft + graphOffset.x, 0), (xLeft + graphOffset.x, HEIGHT), numsAxisWidth)
-        pygame.draw.line(window, numsAxisColor, (xRight + graphOffset.x, 0), (xRight + graphOffset.x, HEIGHT), numsAxisWidth)
-        pygame.draw.line(window, numsAxisColor, (0, yUp + graphOffset.y), (WIDTH, yUp + graphOffset.y), numsAxisWidth)
-        pygame.draw.line(window, numsAxisColor, (0, yDown + graphOffset.y), (WIDTH, yDown + graphOffset.y), numsAxisWidth)
-
-        # Draw the numbers on axes
-        drawText(str(numLeft), Vector2(xLeft + numsOffset.x + graphOffset.x, HEIGHT/2 + numsOffset.y + graphOffset.y), centerY=-1, centerX=0)
-        drawText(str(numRight), Vector2(xRight + numsOffset.x + graphOffset.x, HEIGHT/2 + numsOffset.y + graphOffset.y), centerY=-1, centerX=-1)
-        drawText(str(numUp), Vector2(WIDTH/2 + numsOffset.x + graphOffset.x, yUp + numsOffset.y + graphOffset.y), centerY=0, centerX=1)
-        drawText(str(numDown), Vector2(WIDTH/2 + numsOffset.x + graphOffset.x, yDown + numsOffset.y + graphOffset.y), centerY=0, centerX=1)
     
     pygame.display.update()
     clock.tick(FPS)
