@@ -11,7 +11,7 @@ class Matrix:
                 self.matrix.append([0 for _ in range(cols)])
 
     def getIndex(self, x, y) -> float:
-        return self.matrix[y][x]
+        return self[y][x]
 
     def getDimensions(self) -> tuple:
         return len(self.matrix), len(self.matrix[0])
@@ -96,11 +96,21 @@ class Matrix:
 
         return True
 
+    def __getitem__(self, idx) -> list[float]:
+        return self.matrix[idx]
+
     def toVector2(self) -> Vector2:
-        return Vector2(self.matrix[0][0], self.matrix[1][0])
+        return Vector2(self[0][0], self[1][0])
 
     def toVector3(self) -> Vector3:
-        return Vector3(self.matrix[0][0], self.matrix[1][0], self.matrix[2][0])
+        return Vector3(self[0][0], self[1][0], self[2][0])
+
+    @staticmethod
+    def getIdentity(order: int) -> Matrix:
+        matrix = Matrix(cols=order, rows=order)
+        for i in range(order):
+            matrix[i][i] = 1
+        return matrix
 
     @staticmethod
     def fromVector2(v: Vector2) -> Matrix:
@@ -118,13 +128,23 @@ class Matrix:
     ])
 
 if __name__ == "__main__":
+    # Null matrix
     c = 3
     projection = Matrix(cols=c, rows=c)
     for i in range(c):
         projection.matrix[i][i] = 1
     print(projection)
 
+    # Subscription
+    proj = Matrix([
+        [1, 2, 3],
+        [4, 5, 6],
+        [7, 8, 9],
+    ])
+    print()
+    print(proj[0][2], proj[1][1], proj[2][0])
+    
+    # Vectors
     point = Vector3(15, 0, 0)
-
     print()
     print(Matrix.fromVector3(point))
