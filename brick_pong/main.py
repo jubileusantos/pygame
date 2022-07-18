@@ -7,6 +7,8 @@ import math
 from random import randint, choices
 import time
 
+pathFile = os.path.dirname(__file__)
+
 pygame.init()
 WIDTH = 600
 HEIGHT = 600
@@ -54,7 +56,7 @@ class Brick:
         self.isMovePad = isMovePad
         if self.textureFile:
             # Load sprite
-            self.brickSprite = pygame.image.load(os.path.join(__file__, f"../{self.textureFile}")).convert()
+            self.brickSprite = pygame.image.load(os.path.join(pathFile, self.textureFile)).convert_alpha().convert()
             self.brickSprite = pygame.transform.scale(self.brickSprite, (self.width, self.height))
 
     def draw(self, surface: pygame.Surface=window, drawOutline: bool=True) -> None:
@@ -66,8 +68,8 @@ class Brick:
             healthRatio = self.health / self.maxHealth
             percentPerDamageLevel = 1 / (len(damageSprites) + 1)
             if healthRatio <= 1 - percentPerDamageLevel:
-                idx = map(self.health, 0, self.maxHealth, 0, len(damageSprites))
-                damageSprite = pygame.image.load(os.path.join(__file__, f"../{damageSprites[math.floor(idx)]}")).convert_alpha()
+                idx = map(self.health, 0, self.maxHealth, 0, len(damageSprites))                
+                damageSprite = pygame.image.load(os.path.join(pathFile, f"{damageSprites[math.floor(idx)]}")).convert_alpha()
                 damageSprite = pygame.transform.scale(damageSprite, (self.width, self.height))
                 #print(f"IndexError with index {idx} for health: {self.health}")
                 self.brickSprite.blit(damageSprite, (0, 0))
@@ -108,7 +110,7 @@ class Ball:
         self.speed = speed
         self.ballSprite = None
         if textureFile:
-            self.ballSprite = pygame.image.load(os.path.join(__file__, f"../{textureFile}")).convert_alpha()
+            self.ballSprite = pygame.image.load(os.path.join(pathFile, textureFile)).convert_alpha()
             self.ballSprite = pygame.transform.scale(self.ballSprite, (self.radius*2, self.radius*2))
     
     def update(self) -> bool:
@@ -322,25 +324,25 @@ class Powerup:
 
 # Texture paths
 brickSprites = [
-    "black.png",
-    "blue.png",
-    "green.png",
-    "orange.png",
-    "purple.png",
-    "red.png",
-    "yellow.png"
+    "images/black.png",
+    "images/blue.png",
+    "images/green.png",
+    "images/orange.png",
+    "images/purple.png",
+    "images/red.png",
+    "images/yellow.png"
 ]
 damageSprites = [
-    "damaged3.png",
-    "damaged2.png",
-    "damaged1.png",
+    "images/damaged3.png",
+    "images/damaged2.png",
+    "images/damaged1.png",
 ]
-ballSprite = "ball.png"
+ballSprite = "images/ball.png"
 
 # States
 debugMode = False
 movementWithKeyboard = False
-generateFullLevel = True
+generateFullLevel = False
 generateRandomLevel = True
 brickChance = .4
 

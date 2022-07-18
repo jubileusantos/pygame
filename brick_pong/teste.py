@@ -21,6 +21,8 @@ BLUE = (0, 0, 255)
 GREEN = (0, 255, 0)
 YELLOW = (255, 255, 0)
 
+pathFile = os.path.dirname(__file__)
+
 while True:
     mouseX = pygame.mouse.get_pos()[0]
     mouseY = pygame.mouse.get_pos()[1]
@@ -33,7 +35,7 @@ while True:
 
     window.fill(RED)
 
-    twtSprite = pygame.image.load(os.path.join(__file__, "../twt.png"))
+    twtSprite = pygame.image.load(os.path.join(pathFile, "images/twt.png")).convert_alpha()
     twtSprite = pygame.transform.scale(twtSprite, (mouseX, mouseY))
 
     window.blit(twtSprite, (0, 0))
