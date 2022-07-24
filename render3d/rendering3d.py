@@ -326,8 +326,8 @@ class Cube(BaseObject):
                 textureSurface = pygame.transform.scale(textureSurface, size)
 
                 # Polygon surf
-                polygonSurf = pygame.Surface(size, BLEND_RGBA_MAX).convert_alpha()
-                polygonSurf.fill((255, 255, 255, 0))
+                polygonSurf = pygame.Surface(size, BLEND_RGBA_MAX | SRCALPHA).convert_alpha()
+                polygonSurf.fill((0, 0, 0, 0))
 
                 # Polygon mask
                 pygame.draw.polygon(polygonSurf, BLACK, [(point.x - minX, point.y - minY) for point in face.vertices])
@@ -335,6 +335,7 @@ class Cube(BaseObject):
                 polygonMask.invert()
                 newPolygonSurf = polygonMask.to_surface()
                 newPolygonSurf.set_colorkey(BLACK)
+                newPolygonSurf = newPolygonSurf.convert()
                 
                 # Draw surfaces
                 window.blit(textureSurface, (minX, minY))
@@ -494,7 +495,7 @@ def main():
         "images/lagarta.jpg",
         "images/lagarta.jpg",
     ]
-    #objects.append(Cube(Vector3(WIDTH/2, HEIGHT/2, 1), 400, BLACK, edgeThickness=2, faceColors=faceColors, faceTextures=lagartaTextures))
+    # objects.append(Cube(Vector3(WIDTH/2, HEIGHT/2, 1), 400, BLACK, edgeThickness=2, faceColors=faceColors, faceTextures=lagartaTextures))
     #objects.append(Sphere(color=RED, pos=Vector3(0, 0, 3), radius=150, resolution=25, edgeThickness=1))
 
     # Import shape info

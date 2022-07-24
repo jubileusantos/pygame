@@ -334,6 +334,7 @@ DONE:
 TODO:
  - Se não tiver nenhum fruta no campo de visão, colocar uma seta na tela apontando para a fruta mais próxima
  - Adicionar texturas pra cobra (cabeça e corpo), fruta e... chão?
+ - Adicionar menu com controles e etc
  PASSAR TUDO PRO MICKAELREI
 
 '''

@@ -2,7 +2,7 @@ import pygame
 from pygame.locals import *
 import sys
 from pygame.math import Vector2
-from math import inf, sin, cos, radians, degrees, atan2
+from math import inf, cos
 from random import randint, random
 from time import time
 
@@ -211,17 +211,11 @@ class ChladniPlate:
         if self.showVibrations:
             maxLuminosity = 60
 
-            maxV = -inf
-            minV = inf
             for y in range(round(self.height)):
                 for x in range(round(self.width)):
                     idx = y * round(self.width) + x
                     vibration = self.vibrations[idx]
                     colorLuminosity = clamp(vibration * maxLuminosity, 0, 255)
-                    if vibration > maxV:
-                        maxV = vibration
-                    if vibration < minV:
-                        minV = vibration
 
                     # Paint cell
                     pygame.draw.circle(surface, (colorLuminosity, colorLuminosity, colorLuminosity), (x * self.scale, y * self.scale), self.scale)
